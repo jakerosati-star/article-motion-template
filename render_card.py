@@ -13,6 +13,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageColor
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT = os.path.join(HERE, 'fonts', 'SpecialGothic-VariableFont_wdthwght.ttf')
 FPS = 30
+TAU = 2 * math.pi
 
 # ---- Layouts ---------------------------------------------------------------
 # art: (x, y, w, h) box the art loop is scaled into (keep 16:9).
@@ -194,7 +195,7 @@ def render(cfg, base, fmt, out_path):
     # authors: either "authors": [{"name", "avatar"}, ...] or the single "author" / "avatar" pair
     authors = cfg.get('authors') or [{'name': cfg['author'], 'avatar': cfg.get('avatar')}]
     by1 = text_img(' AND '.join(a['name'] for a in authors), fBy, (235, 235, 235))
-    by2 = text_img(cfg['date'], fBy, (200, 200, 200))
+    by2 = text_img(cfg['date'], fBy, (200, 200, 200)) if cfg.get('date') else None   # date is optional
 
     avs = []                                   # overlapping circular headshots, left to right
     for a in authors:
@@ -218,10 +219,25 @@ def render(cfg, base, fmt, out_path):
         src = src.crop(src.getbbox())
         lw = round(src.width * spec['h'] / src.height)
         logo = fade(src.resize((lw, spec['h']), Image.LANCZOS), LOGO_OPACITY)
-        if spec['at'] == 'row':
+        if cfg.get('cta') and spec['at'] == 'row':
+            # the CTA button takes the right end of the byline row: logo moves up to the tag row (horizontal lockup)
+            src = Image.open(os.path.join(LOGO_DIR, LOGO_FILES['horizontal'])).convert('RGBA'); src = src.crop(src.getbbox())
+            lh_ = round(th * 0.9); lw = round(src.width * lh_ / src.height)
+            logo = fade(src.resize((lw, lh_), Image.LANCZOS), LOGO_OPACITY)
+            logo_xy = (X + TW - lw, tag_y + (th - lh_) // 2)
+        elif spec['at'] == 'row':
             logo_xy = (X + TW - lw, by_y + AV // 2 - spec['h'] // 2)
         else:
             logo_xy = (X, spec['y'] - spec['h'])
+
+    # optional call-to-action button (promos): red box, white condensed caps, right end of the byline row
+    cta = None
+    if cfg.get('cta'):
+        ctxt = text_img(cfg['cta'].upper(), font(700, 75, round(26 * k)), 'white')
+        bw_, bh_ = ctxt.width + round(32 * k), AV
+        cta = Image.new('RGBA', (bw_, bh_), RED + (255,))
+        cta.alpha_composite(ctxt, ((bw_ - ctxt.width) // 2 + round(2 * k), (bh_ - ctxt.height) // 2 + round(3 * k)))
+        cta_c = (X + TW - bw_ / 2, by_y + AV / 2)
 
     art_path = os.path.join(base, cfg['art_loop'])
     P = probe_duration(art_path); N = int(round(P * FPS))
@@ -270,7 +286,10 @@ def render(cfg, base, fmt, out_path):
 
         # subhead + byline
         items = [(s, (X, sub_y + n * sub_lh), 0.7 + n * 0.1, 8.65 + E) for n, s in enumerate(subs)]
-        items += [(by1, (by_x, by_y + round(3 * k)), 1.05, 8.5 + E), (by2, (by_x, by_y + round(27 * k)), 1.15, 8.5 + E)]
+        if by2 is not None:
+            items += [(by1, (by_x, by_y + round(3 * k)), 1.05, 8.5 + E), (by2, (by_x, by_y + round(27 * k)), 1.15, 8.5 + E)]
+        else:   # name only: centre it on the avatar row
+            items += [(by1, (by_x, by_y + AV // 2 - round(13 * k)), 1.05, 8.5 + E)]
         for im, (px, py), st, so in items:
             q = eoc(clamp((t - st) / 0.6)); qo = clamp((t - so) / 0.3)
             if q > 0 and qo < 1:
@@ -282,6 +301,13 @@ def render(cfg, base, fmt, out_path):
                 ax0 = X + n * step
                 fr.alpha_composite(fade(av.resize((sz, sz), Image.LANCZOS), min(1, q * 2.5)), (ax0 + (AV - sz) // 2, by_y + (AV - sz) // 2))
 
+        if cta is not None:   # pops in after the byline, gentle pulse while holding, pops out with the byline
+            q = clamp((t - 1.2) / 0.5); qo = clamp((t - 8.4 - E) / 0.3)
+            if q > 0 and qo < 1:
+                pulse = 1 + 0.035 * max(0.0, math.sin(TAU * (t - 1.7) / 2.5)) ** 8 if t > 1.7 else 1
+                sc = eob(q) * (1 - qo * qo) * pulse
+                im = cta.resize((max(1, int(cta.width * sc)), max(1, int(cta.height * sc))), Image.LANCZOS)
+                fr.alpha_composite(fade(im, min(1, q * 2.5) * (1 - qo)), (int(cta_c[0] - im.width / 2), int(cta_c[1] - im.height / 2)))
         if logo is not None:   # always on screen
             fr.alpha_composite(logo, logo_xy)
         out = fr.convert('RGB')

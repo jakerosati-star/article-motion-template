@@ -15,7 +15,7 @@ There are three steps. Step 1 is custom work for each image, step 2 is fully aut
 
 ### 1. Make the art loop (a seamless 16:9 video, 10s works well)
 
-**If the article art is already animated** (e.g. a GIF), just convert it to a 10s MP4 with whole cycles. See `articles/too-big-to-rig/make_art_loop.py`, which repeats a 2s GIF 5 times and keeps its frame timings exactly.
+**If the article art is already animated** (GIF or animated WebP), convert it with `python3 gif_to_art_loop.py <art.gif> <art_loop.mp4>`. It keeps the frame timings exactly and repeats whole cycles to get close to 10s. Upload animated art to the repo rather than attaching it in chat, since chat attachments arrive as a single still frame.
 
 **If the art is a still**, animate it yourself:
 
@@ -69,6 +69,10 @@ List one or more authors. With two or more, the headshots overlap and pop in one
 ```json
 "authors": [{"name": "WILLIAM KRISTOL"}, {"name": "ANDREW EGGER"}]
 ```
+
+**Optional fields:**
+- `"date"`: leave it out (e.g. for promos) and the author name sits centered next to the photo.
+- `"cta"`: for promos, adds a red call-to-action button (e.g. `"FIGHT THE GOOD FIGHT"`) at the right end of the byline row. It pops in after the byline and pulses gently. In 1:1, 4:5 and 9:16 the logo moves up to the right end of the tag row to make room.
 
 ## Author headshots
 
