@@ -8,7 +8,7 @@ The card loop length matches the art loop length.
 """
 import json, math, os, subprocess, sys, argparse
 import numpy as np
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageColor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONT = os.path.join(HERE, 'fonts', 'SpecialGothic-VariableFont_wdthwght.ttf')
@@ -36,21 +36,40 @@ def eob(t, s=2.2): t -= 1; return 1 + (s + 1) * t ** 3 + s * t ** 2
 def font(weight, width, size):
     f = ImageFont.truetype(FONT, size)
     f.set_variation_by_axes([weight, width])
+    f.spec = (weight, width, size)
     return f
 
 
-def text_img(txt, f, fill):
-    bb = f.getbbox(txt)
-    im = Image.new('RGBA', (bb[2] + 4, bb[3] + 8), (0, 0, 0, 0))
-    ImageDraw.Draw(im).text((0, 0), txt, font=f, fill=fill)
-    return im
+SS = 4   # text is drawn at 4x and scaled down: avoids whole-pixel letter positions (uneven spacing) at small sizes
+
+
+def text_img(txt, f, fill, height=None):
+    """Render text supersampled. Returns an RGBA image whose (0,0) matches ImageDraw.text((0,0)) at the base size."""
+    w, wd, size = f.spec
+    big = font(w, wd, size * SS)
+    bb = big.getbbox(txt)
+    W = (bb[2] + SS * 4) // SS + 1
+    H = height if height else (bb[3] + SS * 8) // SS + 1
+    m = Image.new('L', (W * SS, H * SS), 0)
+    ImageDraw.Draw(m).text((0, 0), txt, font=big, fill=255)
+    m = m.resize((W, H), Image.LANCZOS)
+    col = Image.new('RGBA', (W, H), fill if isinstance(fill, tuple) else ImageColor.getrgb(fill))
+    col.putalpha(m)
+    return col
+
+
+def text_len(txt, f):
+    w, wd, size = f.spec
+    return font(w, wd, size * SS).getlength(txt) / SS
+
+
 
 
 def wrap(txt, f, width):
     lines, cur = [], ''
     for w in txt.split():
         trial = (cur + ' ' + w).strip()
-        if cur and f.getlength(trial) > width:
+        if cur and text_len(trial, f) > width:
             lines.append(cur); cur = w
         else:
             cur = trial
@@ -101,7 +120,7 @@ def render(cfg, base, fmt, out_path):
     hlines = balanced_wrap(cfg['headline'], fH, TW)
     if len(hlines) == 1:   # short headline: scale it up (max 1.5x) while it still fits on one line
         hs = L['head']
-        while hs < L['head'] * 1.5 and font(700, 75, hs + 2).getlength(cfg['headline']) <= TW: hs += 2
+        while hs < L['head'] * 1.5 and text_len(cfg['headline'], font(700, 75, hs + 2)) <= TW: hs += 2
         fH = font(700, 75, hs); lh = hs; hlines = [cfg['headline']]
     sublines = wrap(cfg.get('subhead', ''), fSub, TW) if cfg.get('subhead') else []
     sub_lh = round(36 * k)
@@ -119,15 +138,14 @@ def render(cfg, base, fmt, out_path):
     sub_y = head_y + len(hlines) * lh + gap_sub
     by_y = (sub_y + len(sublines) * sub_lh if sublines else head_y + len(hlines) * lh) + gap_by
 
+    # clip box for the rise/sink animation must include descenders (g, j, p, q, y)
+    band_h = fH.getbbox('Agjpqy')[3] + round(8 * k)
     words = []
     for li, ln in enumerate(hlines):
         x = X
         for w in ln.split(' '):
-            bb = fH.getbbox(w)
-            im = Image.new('RGBA', (bb[2] + 4, lh + 30), (0, 0, 0, 0))
-            ImageDraw.Draw(im).text((0, 0), w, font=fH, fill='white')
-            words.append((im, x, head_y + li * lh))
-            x += fH.getlength(w + ' ')
+            words.append((text_img(w, fH, 'white', height=band_h), x, head_y + li * lh))
+            x += text_len(w + ' ', fH)
     NW = len(words)
     subs = [text_img(s, fSub, (215, 215, 215)) for s in sublines]
     # authors: either "authors": [{"name", "avatar"}, ...] or the single "author" / "avatar" pair
@@ -190,8 +208,8 @@ def render(cfg, base, fmt, out_path):
             q = eoq(clamp((t - 0.05 - j * 0.05) / 0.55))
             qo = eic(clamp((t - (P - 0.36 - (NW - 1) * 0.03) - (NW - 1 - j) * 0.03) / 0.28))
             if q <= 0 or qo >= 1: continue
-            off = int((1 - q) * (lh + 10) + qo * (lh + 10))
-            band = Image.new('RGBA', (im.width, lh + round(14 * k)), (0, 0, 0, 0)); band.alpha_composite(im, (0, off))
+            off = int((1 - q) * band_h + qo * band_h)
+            band = Image.new('RGBA', (im.width, band_h), (0, 0, 0, 0)); band.alpha_composite(im, (0, off))
             fr.alpha_composite(band, (int(x), y - round(4 * k)))
 
         # subhead + byline
