@@ -246,6 +246,15 @@ def render(cfg, base, fmt, out_path):
         sublines = balanced_wrap(cfg['subhead'], fSub, TW) if cfg.get('subhead') else []
         gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
         block_h = measure()
+    # long copy: if the block won't fit above the bottom logo (16:9), shrink the headline until it does
+    spec_ = LOGOS.get(fmt, {})
+    if show_by and spec_.get('at') == 'bottom' and cfg.get('logo', True):
+        limit = spec_['y'] - spec_['h'] - round(36 * k) - L['text_top']
+        while block_h > limit and fH.spec[2] > L['head'] * 0.7:
+            fH = font(700, 75, fH.spec[2] - 2); lh = fH.spec[2]
+            hlines = balanced_wrap(cfg['headline'], fH, TW)
+            gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
+            block_h = measure()
     top = L['text_top']
     if L.get('group'):   # centre art + text together inside a safe zone (vertical formats)
         g0, g1 = L['group']; gap = round(44 * k)
@@ -253,7 +262,10 @@ def render(cfg, base, fmt, out_path):
         top = ay + ah + gap
     elif L.get('center') or L['text_bottom'] - L['text_top'] - block_h > 60:   # also centre when lots of room is left
         # bias = share of the spare room placed above the text (0.5 = centred; lower sits closer to the art)
-        top = top + int(max(0, L['text_bottom'] - L['text_top'] - block_h) * L.get('bias', 0.5))
+        tb = L['text_bottom']
+        if show_by and spec_.get('at') == 'bottom' and cfg.get('logo', True):   # never centre into the bottom logo
+            tb = spec_['y'] - spec_['h'] - round(36 * k)
+        top = top + int(max(0, tb - L['text_top'] - block_h) * L.get('bias', 0.5))
     tag_y = top
     head_y = tag_y + th + gap_tag
     sub_y = head_y + len(hlines) * lh + gap_sub

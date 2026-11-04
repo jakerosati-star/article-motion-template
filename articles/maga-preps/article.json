@@ -1,0 +1,10 @@
+{
+  "art_loop": "art_loop.mp4",
+  "headline": "MAGA Preps for the World to End—Literally",
+  "subhead": "With Republicans fearing electoral doom, right-wing pundits send their audience to the bunker.",
+  "authors": [{"name": "WILL SOMMER"}],
+  "date": "NOVEMBER 3",
+  "accent": "#E4002B",
+  "output_prefix": "out/maga-preps",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}

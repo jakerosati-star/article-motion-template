@@ -1,0 +1,10 @@
+{
+  "art_loop": "art_loop.mp4",
+  "headline": "Inside the Wargaming to Foil Trump’s Election Meddling",
+  "subhead": "Pro-democracy groups have spent months prepping for an election crisis—and confronting what happens if their defenses fail.",
+  "authors": [{"name": "LAUREN EGAN"}],
+  "date": "NOVEMBER 2",
+  "accent": "#E4002B",
+  "output_prefix": "out/wargaming",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
