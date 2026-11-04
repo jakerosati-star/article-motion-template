@@ -155,7 +155,7 @@ def render(cfg, base, fmt, out_path):
     AV = round(50 * k)
 
     # --- build text pieces & measure block height
-    tagtxt = text_img(cfg['tag'], fTag, 'white'); tw = tagtxt.width + round(24 * k); th = round(44 * k)
+    tagtxt = text_img(cfg.get('tag') or 'THE BULWARK', fTag, 'white'); tw = tagtxt.width + round(24 * k); th = round(44 * k)
     hlines = balanced_wrap(cfg['headline'], fH, TW)
     if len(hlines) == 1:   # short headline: scale it up (max 1.5x) while it still fits on one line
         hs = L['head']
@@ -242,7 +242,7 @@ def render(cfg, base, fmt, out_path):
         d = ImageDraw.Draw(fr)
 
         # accent seam: wipes in, retracts before the headline leaves
-        p = eoq(clamp((t - 0.6) / 0.7)); p0 = eic(clamp((t - 9.0 - E) / 0.45))
+        p = eoq(clamp((t - 0.25) / 0.7)); p0 = eic(clamp((t - 9.0 - E) / 0.45))
         if p > p0:
             if seam == 'bottom':
                 d.rectangle((ax + int(aw * p0), ay + ah, ax + int(aw * p), ay + ah + sw), fill=RED)
@@ -250,10 +250,10 @@ def render(cfg, base, fmt, out_path):
                 d.rectangle((ax - sw, ay + int(ah * p0), ax - 1, ay + int(ah * p)), fill=RED)
 
         # tag box
-        p = eoq(clamp((t - 0.8) / 0.45)) * (1 - eic(clamp((t - 8.85 - E) / 0.4)))
+        p = eoq(clamp((t - 0.35) / 0.45)) * (1 - eic(clamp((t - 8.85 - E) / 0.4)))
         if p > 0:
             d.rectangle((X, tag_y, X + int(tw * p), tag_y + th), fill=RED)
-            q = eoc(clamp((t - 1.0) / 0.4))
+            q = eoc(clamp((t - 0.55) / 0.4))
             if q > 0:
                 box = Image.new('RGBA', (tw, th), (0, 0, 0, 0))
                 box.alpha_composite(fade(tagtxt, q), (round(12 * k), int(round(4 * k) + (1 - q) * 20 * k)))
@@ -261,7 +261,7 @@ def render(cfg, base, fmt, out_path):
 
         # headline: first in, last out (words rise from / sink into a mask)
         for j, (im, x, y) in enumerate(words):
-            q = eoq(clamp((t - 0.05 - j * 0.05) / 0.55))
+            q = eoq(clamp((t + 1 / FPS - j * 0.04) / 0.5))   # first word is already moving on frame 0
             qo = eic(clamp((t - (P - 0.36 - (NW - 1) * 0.03) - (NW - 1 - j) * 0.03) / 0.28))
             if q <= 0 or qo >= 1: continue
             off = int((1 - q) * band_h + qo * band_h)
@@ -269,14 +269,14 @@ def render(cfg, base, fmt, out_path):
             fr.alpha_composite(band, (int(x), y - round(4 * k)))
 
         # subhead + byline
-        items = [(s, (X, sub_y + n * sub_lh), 1.2 + n * 0.1, 8.65 + E) for n, s in enumerate(subs)]
-        items += [(by1, (by_x, by_y + round(3 * k)), 1.65, 8.5 + E), (by2, (by_x, by_y + round(27 * k)), 1.75, 8.5 + E)]
+        items = [(s, (X, sub_y + n * sub_lh), 0.7 + n * 0.1, 8.65 + E) for n, s in enumerate(subs)]
+        items += [(by1, (by_x, by_y + round(3 * k)), 1.05, 8.5 + E), (by2, (by_x, by_y + round(27 * k)), 1.15, 8.5 + E)]
         for im, (px, py), st, so in items:
             q = eoc(clamp((t - st) / 0.6)); qo = clamp((t - so) / 0.3)
             if q > 0 and qo < 1:
                 fr.alpha_composite(fade(im, q * (1 - qo)), (px, int(py + (1 - q) * 18 * k + qo * 10 * k)))
         for n, av in enumerate(avs):
-            q = clamp((t - 1.5 - n * 0.12) / 0.5); qo = clamp((t - 8.45 - E + n * 0.06) / 0.3)
+            q = clamp((t - 0.9 - n * 0.12) / 0.5); qo = clamp((t - 8.45 - E + n * 0.06) / 0.3)
             if q > 0 and qo < 1:
                 sz = max(1, int(AV * eob(q) * (1 - qo * qo)))
                 ax0 = X + n * step

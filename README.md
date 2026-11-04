@@ -34,6 +34,8 @@ There are three steps. Step 1 is custom work for each image, step 2 is fully aut
 
 When reusing this for a new image, the per-image parts are the bounding boxes, the glow positions (laser, eyes, ray centre) and the entry/exit timings.
 
+**Never start on an empty frame.** The first frame of the art loop is also the first thing people see (and the thumbnail when autoplay is off), so the main subject must be on screen at frame 0. Only secondary elements should animate in and out around the loop point.
+
 Timing convention (10s loop):
 - 0–3s: art elements enter.
 - 3.5–8.5s: extra motion.
@@ -47,7 +49,7 @@ Write an `article.json` next to your art loop and avatar (copy `example/article.
 ```json
 {
   "art_loop": "art_loop.mp4",
-  "tag": "THE TRIAD",
+  "tag": "THE BULWARK",
   "headline": "Emergency Triad: MAGA Drowns Under a Blue Wave",
   "subhead": "Pop the champagne. Preserve the documents.",
   "authors": [{"name": "JONATHAN V. LAST"}],
@@ -101,17 +103,20 @@ The headline comes in first and leaves last, so it stays on screen as long as po
 
 | Time | Event |
 |---|---|
-| 0.05s | Headline rises in word by word from behind a mask |
-| 0.6s | Accent seam line wipes across (vertical on the art's left edge in 16:9) |
-| 0.8s | Tag box opens, then the tag text rises |
-| 1.2s | Subhead fades up |
-| 1.5s | Avatar pops in, then name and date |
+| 0s | Headline starts rising word by word from behind a mask, already moving on the first frame |
+| 0.25s | Accent seam line wipes across (vertical on the art's left edge in 16:9) |
+| 0.35s | Tag box opens, then the tag text rises |
+| 0.7s | Subhead fades up |
+| 0.9s | Avatar(s) pop in, then name and date |
 | last ~1.5s | Byline, subhead, tag and seam leave in reverse order |
 | last ~0.6s | Headline sinks out, ready to loop |
 
 Outro times are anchored to the end of the art loop, so loops longer or shorter than 10s still work.
 
 ## Branding
+
+The red tag always reads **THE BULWARK** (the default when an article's `tag` is left out). For paid media we don't break out the show or newsletter name.
+
 
 Every card carries a white Bulwark logo at 70% opacity, always on screen (from `BW Logos (transparent)/`):
 

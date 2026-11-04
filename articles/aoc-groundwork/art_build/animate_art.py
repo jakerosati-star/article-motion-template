@@ -16,6 +16,7 @@ def clamp(x): return max(0.0, min(1.0, x))
 def eoq(t): return 1 - (1 - t) ** 5
 def eoc(t): return 1 - (1 - t) ** 3
 def eic(t): return t ** 3
+def ease_io(t): return t * t * (3 - 2 * t)
 def wv(k, t, ph=0): return math.sin(TAU * k * t / P + ph)
 
 def warp(rgba, scale, cx, cy, dx=0, dy=0):
@@ -47,14 +48,14 @@ for i in range(N):
     f = over(f, np.array([255, 255, 252], np.float32), dl)
 
     # band: opens from the centre, closes at the end
-    p = eoq(clamp(t / 0.6)) * (1 - eic(clamp((t - 9.45) / 0.45)))
+    p = 1.0                                     # band is on screen the whole loop
     if p > 0:
         cx = (BX0 + BX1) / 2; hw = (BX1 - BX0) / 2 * p
         ba = np.zeros((H, W), np.float32); ba[BY0:BY1, int(cx - hw):int(cx + hw)] = 1
         f = over(f, BAND, ba)
 
     # map: grows in behind AOC, gentle drift, sheen pass, shrinks out
-    q = eoc(clamp((t - 0.9) / 0.8)); qo = eic(clamp((t - 8.6) / 0.4))
+    q = eoc(clamp((t - 0.05) / 0.8)); qo = eic(clamp((t - 9.2) / 0.5))   # grows in right away, out just before the loop point
     if q > 0 and qo < 1:
         sc = (0.86 + 0.14 * q) * (1 - 0.12 * qo)
         m = warp(mp, sc, *MAP_C, dx=6 * wv(1, t, 0.3) - 6 * math.sin(0.3))
@@ -67,10 +68,11 @@ for i in range(N):
         f = over(f, rgb, al)
 
     # AOC + voters: rise from behind the clip line, breathe, sink out
-    q = eoq(clamp((t - 0.25) / 1.0)); qo = eic(clamp((t - 9.0) / 0.5))
-    if q > 0 and qo < 1:
-        rise = (1 - q) * 900 + qo * 900
-        breathe = 1 + 0.014 * (0.5 - 0.5 * math.cos(TAU * t / P))
+    # on screen from frame 0: starts slightly large and settles in, eases back up before the loop point
+    if True:
+        rise = 0
+        settle = 0.03 * (1 - eoc(clamp(t / 1.2))) + 0.03 * ease_io(clamp((t - 8.9) / 1.1))
+        breathe = 1 + settle + 0.014 * (0.5 - 0.5 * math.cos(TAU * t / P))
         g = warp(fg, breathe, *FG_ANCHOR, dy=rise)
         al = g[..., 3] / 255; al[CLIP_Y:] = 0
         f = over(f, g[..., :3], al)
