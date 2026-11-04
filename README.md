@@ -11,7 +11,7 @@ Looping social video for an article: animated art on top (or beside), headline p
 
 ## Making a new one
 
-There are two steps. Step 2 is fully automatic. Step 1 is custom work for each image.
+There are three steps. Step 1 is custom work for each image, step 2 is fully automatic, and step 3 delivers the finals.
 
 ### 1. Make the art loop (a seamless 16:9 video, 10s works well)
 
@@ -84,6 +84,16 @@ The preferred file name is the name in lowercase with hyphens (`sam-stein.jpg`),
 To use a one-off photo instead, add `"avatar": "photo.jpg"` to that author (the path is relative to the article folder). If no photo is found, the card renders without one and prints a warning.
 
 Renders all four formats in about a minute. Add `--formats 1x1,9x16` to render only some. Each format also writes a `_still.png` frame from the 5-second mark for previews or thumbnails.
+
+### 3. Deliver finals to Google Drive
+
+Upload the four finished cards to the shared finals folder, in a subfolder for the article:
+
+- **Finals folder:** https://drive.google.com/drive/folders/16tN90cEpdch5aAEYp4m6WMiTM4F8OEBr (folder ID `16tN90cEpdch5aAEYp4m6WMiTM4F8OEBr`)
+- **Subfolder:** one per article. Match how the existing subfolders are named, and reuse the article's subfolder if it already exists rather than creating a duplicate.
+- **Files:** the four `out/*_1x1.mp4`, `_4x5.mp4`, `_9x16.mp4` and `_16x9.mp4` cards. If cards are re-rendered after a revision, replace the old files in the same subfolder.
+
+Needs the Google Drive connector to be connected for the session.
 
 ## Headline panel animation (built into `render_card.py`)
 
