@@ -73,6 +73,7 @@ List one or more authors. With two or more, the headshots overlap and pop in one
 **Optional fields:**
 - `"date"`: leave it out (e.g. for promos) and the author name sits centered next to the photo.
 - `"subhead_prominent": true`: for promos, makes the subhead (usually the offer) bigger, bolder and white, and keeps its lines balanced.
+- `"highlight"`: a phrase from the subhead (e.g. `"20% off Bulwark+"`) gets a fluorescent green highlighter mark. The mark swipes on left to right just after the subhead lands, and the words under it turn black so they stay readable.
 - `"cta"`: for promos, adds a red call-to-action button (e.g. `"FIGHT THE GOOD FIGHT"`) at the right end of the byline row. It pops in after the byline and pulses gently. In 1:1, 4:5 and 9:16 the logo moves up to the right end of the tag row to make room.
 
 ## Author headshots

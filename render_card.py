@@ -6,7 +6,7 @@ Usage:  python3 render_card.py example/article.json [--formats 1x1,9x16]
 The art loop is any seamless-looping 16:9 video (see README for how to make one).
 The card loop length matches the art loop length.
 """
-import json, math, os, re, subprocess, sys, argparse
+import json, math, os, re, random, subprocess, sys, argparse
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 
@@ -196,6 +196,41 @@ def render(cfg, base, fmt, out_path):
             x += text_len(w + ' ', fH)
     NW = len(words)
     subs = [text_img(s, fSub, sub_col) for s in sublines]
+
+    # optional highlighter on a phrase in the subhead (e.g. the offer): green marker swipes on, text under it turns black
+    hls = []   # (line index, marker RGBA, dark text RGBA, x start, x end)
+    if cfg.get('highlight') and sublines:
+        full = ' '.join(sublines); i0 = full.find(cfg['highlight'])
+        if i0 < 0: print(f"  warning: highlight {cfg['highlight']!r} not found in subhead", flush=True)
+        else:
+            i1 = i0 + len(cfg['highlight']); pos = 0
+            rng = random.Random(cfg['highlight'])
+            size = fSub.spec[2]; cap_top = fSub.getbbox('H')[1]; baseline = fSub.getbbox('H')[3]
+            for n, ln in enumerate(sublines):
+                a0, a1 = max(i0, pos) - pos, min(i1, pos + len(ln)) - pos
+                pos += len(ln) + 1
+                if a1 <= a0: continue
+                seg = ln[a0:a1].strip()
+                a0 = a0 + (len(ln[a0:a1]) - len(ln[a0:a1].lstrip()))
+                x0 = text_len(ln[:a0], fSub); x1 = x0 + text_len(seg, fSub)
+                pad = 0.16 * size; lpad = 0.07 * size; top = cap_top - 0.2 * size; bot = baseline + 0.24 * size
+                ims = subs[n]; Wm, Hm = int(x1 + pad * 2 + 8), int(max(ims.height, bot + 0.2 * size))
+                S4 = 4; m = Image.new('L', (Wm * S4, Hm * S4), 0)
+                jit = lambda: rng.uniform(-0.045, 0.045) * size
+                steps = max(6, int((x1 - x0) / (0.6 * size)))
+                topl = [(x0 - lpad + (x1 - x0 + lpad + pad) * j / steps, top + jit()) for j in range(steps + 1)]
+                botl = [(x0 - lpad + (x1 - x0 + lpad + pad) * j / steps, bot + jit()) for j in range(steps, -1, -1)]
+                # ragged, slightly slanted chisel-tip ends
+                left = [(x0 - lpad - 0.05 * size, bot - 0.15 * size), (x0 - lpad + 0.03 * size, top + 0.2 * size)]
+                right = [(x1 + pad + 0.07 * size, top + 0.25 * size), (x1 + pad - 0.03 * size, bot - 0.1 * size)]
+                poly = left + topl + right + botl
+                ImageDraw.Draw(m).polygon([(px * S4, py * S4) for px, py in poly], fill=255)
+                m = m.resize((Wm, Hm), Image.LANCZOS)
+                streak = np.array([0.9 + 0.1 * rng.random() for _ in range(Hm)], np.float32)[:, None]   # faint ink streaks
+                al = (np.array(m, np.float32) * streak).astype(np.uint8)
+                marker = Image.new('RGBA', (Wm, Hm), (73, 227, 12, 255)); marker.putalpha(Image.fromarray(al))
+                dark = text_img(ln, fSub, (12, 12, 12))
+                hls.append((n, marker, dark, x0 - lpad - 0.1 * size, x1 + pad + 0.1 * size))
     # authors: either "authors": [{"name", "avatar"}, ...] or the single "author" / "avatar" pair
     authors = cfg.get('authors') or [{'name': cfg['author'], 'avatar': cfg.get('avatar')}]
     by1 = text_img(' AND '.join(a['name'] for a in authors), fBy, (235, 235, 235))
@@ -298,6 +333,17 @@ def render(cfg, base, fmt, out_path):
             q = eoc(clamp((t - st) / 0.6)); qo = clamp((t - so) / 0.3)
             if q > 0 and qo < 1:
                 fr.alpha_composite(fade(im, q * (1 - qo)), (px, int(py + (1 - q) * 18 * k + qo * 10 * k)))
+        for n, marker, dark, hx0, hx1 in hls:   # highlighter swipes on once the subhead has landed
+            p = eoc(clamp((t - 1.35) / 0.45)); qo = clamp((t - 8.65 - E) / 0.3)
+            if p > 0 and qo < 1:
+                cut = int(hx0 + (hx1 - hx0) * p)
+                mk = marker.copy(); mk.paste((0, 0, 0, 0), (cut, 0, mk.width, mk.height))
+                dk = dark.crop((0, 0, mk.width, mk.height)) if dark.width >= mk.width else dark
+                mask = np.array(mk)[..., 3].astype(np.float32) / 255
+                da = np.array(dk); hh, ww = min(da.shape[0], mask.shape[0]), min(da.shape[1], mask.shape[1])
+                da = da[:hh, :ww].copy(); da[..., 3] = (da[..., 3] * mask[:hh, :ww]).astype(np.uint8)
+                py = int(sub_y + n * sub_lh + qo * 10 * k)
+                fr.alpha_composite(fade(mk, 1 - qo), (X, py)); fr.alpha_composite(fade(Image.fromarray(da), 1 - qo), (X, py))
         for n, av in enumerate(avs):
             q = clamp((t - 0.9 - n * 0.12) / 0.5); qo = clamp((t - 8.45 - E + n * 0.06) / 0.3)
             if q > 0 and qo < 1:
