@@ -25,6 +25,19 @@ LAYOUTS = {
     '16x9': dict(size=(1920, 1080), art=(704, 202, 1216, 684), text_x=80, text_w=560, text_top=90,  text_bottom=990,  head=96, center=True, seam='left'),
 }
 
+# Bulwark logo per format: which lockup, its height in px, and where it sits.
+#   'row'    = right-aligned to the text column, vertically centred on the byline row
+#   'bottom' = left-aligned with the text, bottom edge at the given y
+LOGO_DIR = os.path.join(HERE, 'BW Logos (transparent)')
+LOGO_FILES = {'horizontal': 'Horizontal Logo, White TRANSPARENT.png', 'stacked': 'Stacked Logo, White TRANSPARENT.png'}
+LOGO_OPACITY = 0.7
+LOGOS = {
+    '1x1':  dict(kind='horizontal', h=40, at='row'),
+    '4x5':  dict(kind='horizontal', h=44, at='row'),
+    '9x16': dict(kind='stacked',    h=84, at='row'),
+    '16x9': dict(kind='horizontal', h=46, at='bottom', y=990),
+}
+
 # ---- Easing ----------------------------------------------------------------
 def clamp(x): return max(0.0, min(1.0, x))
 def eoc(t): return 1 - (1 - t) ** 3
@@ -198,6 +211,18 @@ def render(cfg, base, fmt, out_path):
     av_w = AV + step * (len(avs) - 1) if avs else 0
     by_x = X + (av_w + round(14 * k) if avs else 0)
 
+    logo = None
+    if cfg.get('logo', True) and fmt in LOGOS:
+        spec = LOGOS[fmt]
+        src = Image.open(os.path.join(LOGO_DIR, LOGO_FILES[spec['kind']])).convert('RGBA')
+        src = src.crop(src.getbbox())
+        lw = round(src.width * spec['h'] / src.height)
+        logo = fade(src.resize((lw, spec['h']), Image.LANCZOS), LOGO_OPACITY)
+        if spec['at'] == 'row':
+            logo_xy = (X + TW - lw, by_y + AV // 2 - spec['h'] // 2)
+        else:
+            logo_xy = (X, spec['y'] - spec['h'])
+
     art_path = os.path.join(base, cfg['art_loop'])
     P = probe_duration(art_path); N = int(round(P * FPS))
     E = P - 10.0   # timings below were designed on a 10s loop; outro is anchored to the loop end
@@ -257,6 +282,8 @@ def render(cfg, base, fmt, out_path):
                 ax0 = X + n * step
                 fr.alpha_composite(fade(av.resize((sz, sz), Image.LANCZOS), min(1, q * 2.5)), (ax0 + (AV - sz) // 2, by_y + (AV - sz) // 2))
 
+        if logo is not None:   # always on screen
+            fr.alpha_composite(logo, logo_xy)
         out = fr.convert('RGB')
         if i == int(5 * FPS):
             out.save(out_path.replace('.mp4', '_still.png'))

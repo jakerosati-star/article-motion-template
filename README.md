@@ -111,6 +111,18 @@ The headline comes in first and leaves last, so it stays on screen as long as po
 
 Outro times are anchored to the end of the art loop, so loops longer or shorter than 10s still work.
 
+## Branding
+
+Every card carries a white Bulwark logo at 70% opacity, always on screen (from `BW Logos (transparent)/`):
+
+| Format | Lockup | Placement |
+|---|---|---|
+| 1:1, 4:5 | Horizontal | Right end of the byline row |
+| 9:16 | Stacked | Right end of the byline row |
+| 16:9 | Horizontal | Bottom of the text column |
+
+Sizes, positions and opacity are in the `LOGOS` table in `render_card.py`. Add `"logo": false` to an article's settings to leave it off.
+
 ## Type
 
 Special Gothic variable font (`fonts/`):
