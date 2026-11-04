@@ -73,7 +73,9 @@ List one or more authors. With two or more, the headshots overlap and pop in one
 **Optional fields:**
 - `"date"`: leave it out (e.g. for promos) and the author name sits centered next to the photo.
 - `"subhead_prominent": true`: for promos, makes the subhead (usually the offer) bigger, bolder and white, and keeps its lines balanced.
-- `"highlight"`: a phrase from the subhead (e.g. `"20% off Bulwark+"`) gets a fluorescent green highlighter mark. The mark swipes on left to right just after the subhead lands, and the words under it turn black so they stay readable.
+- `"highlight"`: a phrase from the headline or subhead gets a neon-yellow highlighter mark (change it with `"highlight_color"`). The mark swipes on left to right once that line has landed, and the words under it turn black so they stay readable.
+- `"byline": false`: drops the author row. The headline and subhead grow (up to 1.4x) to fill the room, and the logo moves to the right end of the tag row.
+- `"outro": false`: the text stays on screen through the end of the loop instead of leaving. When the video loops, the text resets and animates in again.
 - `"cta"`: for promos, adds a red call-to-action button (e.g. `"FIGHT THE GOOD FIGHT"`) at the right end of the byline row. It pops in after the byline and pulses gently. In 1:1, 4:5 and 9:16 the logo moves up to the right end of the tag row to make room.
 
 ## Author headshots

@@ -108,6 +108,50 @@ def fade(im, a):
     return Image.fromarray(arr)
 
 
+def highlight_marks(lines, f, phrase, color, vtop=0.2, vbot=0.24):
+    """Marker strokes for `phrase` across wrapped `lines`. Returns [(line index, marker RGBA, dark line RGBA, x start, x end)];
+    images share the line's text origin (0,0)."""
+    full = ' '.join(lines); i0 = full.find(phrase); i1 = i0 + len(phrase); pos = 0; out = []
+    rng = random.Random(phrase)
+    size = f.spec[2]; cap_top = f.getbbox('H')[1]; baseline = f.getbbox('H')[3]
+    for n, ln in enumerate(lines):
+        a0, a1 = max(i0, pos) - pos, min(i1, pos + len(ln)) - pos
+        pos += len(ln) + 1
+        if a1 <= a0: continue
+        seg = ln[a0:a1].strip()
+        a0 = a0 + (len(ln[a0:a1]) - len(ln[a0:a1].lstrip()))
+        x0 = text_len(ln[:a0], f); x1 = x0 + text_len(seg, f)
+        pad = 0.16 * size; lpad = 0.07 * size; top = cap_top - vtop * size; bot = baseline + vbot * size
+        dark = text_img(ln, f, (12, 12, 12))
+        Wm, Hm = int(x1 + pad * 2 + 8), int(max(dark.height, bot + 0.2 * size))
+        S4 = 4; m = Image.new('L', (Wm * S4, Hm * S4), 0)
+        jit = lambda: rng.uniform(-0.045, 0.045) * size
+        steps = max(6, int((x1 - x0) / (0.6 * size)))
+        topl = [(x0 - lpad + (x1 - x0 + lpad + pad) * j / steps, top + jit()) for j in range(steps + 1)]
+        botl = [(x0 - lpad + (x1 - x0 + lpad + pad) * j / steps, bot + jit()) for j in range(steps, -1, -1)]
+        left = [(x0 - lpad - 0.05 * size, bot - 0.15 * size), (x0 - lpad + 0.03 * size, top + 0.2 * size)]     # ragged chisel-tip ends
+        right = [(x1 + pad + 0.07 * size, top + 0.25 * size), (x1 + pad - 0.03 * size, bot - 0.1 * size)]
+        ImageDraw.Draw(m).polygon([(px * S4, py * S4) for px, py in left + topl + right + botl], fill=255)
+        m = m.resize((Wm, Hm), Image.LANCZOS)
+        streak = np.array([0.94 + 0.06 * rng.random() for _ in range(Hm)], np.float32)[:, None]   # faint ink streaks
+        marker = Image.new('RGBA', (Wm, Hm), tuple(color) + (255,))
+        marker.putalpha(Image.fromarray((np.array(m, np.float32) * streak).astype(np.uint8)))
+        out.append((n, marker, dark, x0 - lpad - 0.1 * size, x1 + pad + 0.1 * size))
+    return out
+
+
+def draw_marks(fr, marks, p, alpha, origin_of_line):
+    """Draw marker strokes wiped on to progress p (0-1), with the text under them in black."""
+    for n, marker, dark, hx0, hx1 in marks:
+        cut = int(hx0 + (hx1 - hx0) * p)
+        mk = marker.copy(); mk.paste((0, 0, 0, 0), (max(0, cut), 0, mk.width, mk.height))
+        mask = np.array(mk)[..., 3].astype(np.float32) / 255
+        da = np.array(dark); hh, ww = min(da.shape[0], mask.shape[0]), min(da.shape[1], mask.shape[1])
+        da = da[:hh, :ww].copy(); da[..., 3] = (da[..., 3] * mask[:hh, :ww]).astype(np.uint8)
+        ox, oy = origin_of_line(n)
+        fr.alpha_composite(fade(mk, alpha), (int(ox), int(oy))); fr.alpha_composite(fade(Image.fromarray(da), alpha), (int(ox), int(oy)))
+
+
 def hex2rgb(h):
     h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
@@ -172,7 +216,32 @@ def render(cfg, base, fmt, out_path):
     # The font has built-in space above its capitals (bbox top of 'H'); subtract it, and add back the 4px the mask box is raised by.
     gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
     gap_sub = round(24 * k); gap_by = round(24 * k)
-    block_h = th + gap_tag + len(hlines) * lh + (gap_sub + len(sublines) * sub_lh if sublines else 0) + gap_by + AV
+    show_by = cfg.get('byline', True) is not False
+    def measure():
+        return th + gap_tag + len(hlines) * lh + (gap_sub + len(sublines) * sub_lh if sublines else 0) + (gap_by + AV if show_by else 0)
+    block_h = measure()
+    if not show_by:
+        # no byline: grow the copy (headline + subhead together, max 1.4x) into the room it leaves
+        if L.get('group'): room = L['group'][1] - L['group'][0] - ah - round(44 * k)
+        else: room = L['text_bottom'] - L['text_top'] - X
+        base_h, base_s, base_sl = fH.spec[2], fSub.spec[2], sub_lh
+        sub_spec = fSub.spec
+        best = None
+        for step in range(0, 41):
+            f_ = 1 + step * 0.01
+            fH = font(700, 75, round(base_h * f_)); lh = fH.spec[2]
+            hlines = balanced_wrap(cfg['headline'], fH, TW)
+            fSub = font(sub_spec[0], sub_spec[1], round(base_s * f_)); sub_lh = round(base_sl * f_)
+            sublines = balanced_wrap(cfg['subhead'], fSub, TW) if cfg.get('subhead') else []
+            gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
+            if measure() <= room: best = f_
+            else: break
+        f_ = best or 1.0
+        fH = font(700, 75, round(base_h * f_)); lh = fH.spec[2]; hlines = balanced_wrap(cfg['headline'], fH, TW)
+        fSub = font(sub_spec[0], sub_spec[1], round(base_s * f_)); sub_lh = round(base_sl * f_)
+        sublines = balanced_wrap(cfg['subhead'], fSub, TW) if cfg.get('subhead') else []
+        gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
+        block_h = measure()
     top = L['text_top']
     if L.get('group'):   # centre art + text together inside a safe zone (vertical formats)
         g0, g1 = L['group']; gap = round(44 * k)
@@ -197,47 +266,21 @@ def render(cfg, base, fmt, out_path):
     NW = len(words)
     subs = [text_img(s, fSub, sub_col) for s in sublines]
 
-    # optional highlighter on a phrase in the subhead (e.g. the offer): green marker swipes on, text under it turns black
-    hls = []   # (line index, marker RGBA, dark text RGBA, x start, x end)
-    if cfg.get('highlight') and sublines:
-        full = ' '.join(sublines); i0 = full.find(cfg['highlight'])
-        if i0 < 0: print(f"  warning: highlight {cfg['highlight']!r} not found in subhead", flush=True)
-        else:
-            i1 = i0 + len(cfg['highlight']); pos = 0
-            rng = random.Random(cfg['highlight'])
-            size = fSub.spec[2]; cap_top = fSub.getbbox('H')[1]; baseline = fSub.getbbox('H')[3]
-            for n, ln in enumerate(sublines):
-                a0, a1 = max(i0, pos) - pos, min(i1, pos + len(ln)) - pos
-                pos += len(ln) + 1
-                if a1 <= a0: continue
-                seg = ln[a0:a1].strip()
-                a0 = a0 + (len(ln[a0:a1]) - len(ln[a0:a1].lstrip()))
-                x0 = text_len(ln[:a0], fSub); x1 = x0 + text_len(seg, fSub)
-                pad = 0.16 * size; lpad = 0.07 * size; top = cap_top - 0.2 * size; bot = baseline + 0.24 * size
-                ims = subs[n]; Wm, Hm = int(x1 + pad * 2 + 8), int(max(ims.height, bot + 0.2 * size))
-                S4 = 4; m = Image.new('L', (Wm * S4, Hm * S4), 0)
-                jit = lambda: rng.uniform(-0.045, 0.045) * size
-                steps = max(6, int((x1 - x0) / (0.6 * size)))
-                topl = [(x0 - lpad + (x1 - x0 + lpad + pad) * j / steps, top + jit()) for j in range(steps + 1)]
-                botl = [(x0 - lpad + (x1 - x0 + lpad + pad) * j / steps, bot + jit()) for j in range(steps, -1, -1)]
-                # ragged, slightly slanted chisel-tip ends
-                left = [(x0 - lpad - 0.05 * size, bot - 0.15 * size), (x0 - lpad + 0.03 * size, top + 0.2 * size)]
-                right = [(x1 + pad + 0.07 * size, top + 0.25 * size), (x1 + pad - 0.03 * size, bot - 0.1 * size)]
-                poly = left + topl + right + botl
-                ImageDraw.Draw(m).polygon([(px * S4, py * S4) for px, py in poly], fill=255)
-                m = m.resize((Wm, Hm), Image.LANCZOS)
-                streak = np.array([0.9 + 0.1 * rng.random() for _ in range(Hm)], np.float32)[:, None]   # faint ink streaks
-                al = (np.array(m, np.float32) * streak).astype(np.uint8)
-                marker = Image.new('RGBA', (Wm, Hm), (73, 227, 12, 255)); marker.putalpha(Image.fromarray(al))
-                dark = text_img(ln, fSub, (12, 12, 12))
-                hls.append((n, marker, dark, x0 - lpad - 0.1 * size, x1 + pad + 0.1 * size))
+    # optional highlighter: a phrase in the headline (checked first) or subhead gets a marker stroke that swipes on;
+    # the text under it turns black
+    HL_COL = hex2rgb(cfg.get('highlight_color', '#FFF200'))   # neon yellow
+    hl_head, hl_sub = [], []
+    if cfg.get('highlight'):
+        if cfg['highlight'] in ' '.join(hlines): hl_head = highlight_marks(hlines, fH, cfg['highlight'], HL_COL, vtop=0.09, vbot=0.12)   # tight headline leading
+        elif sublines and cfg['highlight'] in ' '.join(sublines): hl_sub = highlight_marks(sublines, fSub, cfg['highlight'], HL_COL)
+        else: print(f"  warning: highlight {cfg['highlight']!r} not found in headline or subhead", flush=True)
     # authors: either "authors": [{"name", "avatar"}, ...] or the single "author" / "avatar" pair
-    authors = cfg.get('authors') or [{'name': cfg['author'], 'avatar': cfg.get('avatar')}]
+    authors = cfg.get('authors') or ([{'name': cfg['author'], 'avatar': cfg.get('avatar')}] if cfg.get('author') else [{'name': ''}])
     by1 = text_img(' AND '.join(a['name'] for a in authors), fBy, (235, 235, 235))
     by2 = text_img(cfg['date'], fBy, (200, 200, 200)) if cfg.get('date') else None   # date is optional
 
     avs = []                                   # overlapping circular headshots, left to right
-    for a in authors:
+    for a in (authors if show_by else []):
         path = find_headshot(a, base)
         if not path: continue
         big = AV * 4
@@ -258,8 +301,8 @@ def render(cfg, base, fmt, out_path):
         src = src.crop(src.getbbox())
         lw = round(src.width * spec['h'] / src.height)
         logo = fade(src.resize((lw, spec['h']), Image.LANCZOS), LOGO_OPACITY)
-        if cfg.get('cta') and spec['at'] == 'row':
-            # the CTA button takes the right end of the byline row: logo moves up to the tag row (horizontal lockup)
+        if not show_by or (cfg.get('cta') and spec['at'] == 'row'):
+            # the byline row is taken by the CTA, or gone: logo moves up to the tag row (horizontal lockup)
             src = Image.open(os.path.join(LOGO_DIR, LOGO_FILES['horizontal'])).convert('RGBA'); src = src.crop(src.getbbox())
             lh_ = round(th * 0.9); lw = round(src.width * lh_ / src.height)
             logo = fade(src.resize((lw, lh_), Image.LANCZOS), LOGO_OPACITY)
@@ -281,6 +324,7 @@ def render(cfg, base, fmt, out_path):
     art_path = os.path.join(base, cfg['art_loop'])
     P = probe_duration(art_path); N = int(round(P * FPS))
     E = P - 10.0   # timings below were designed on a 10s loop; outro is anchored to the loop end
+    if cfg.get('outro') is False: E = 1e9   # text stays on screen through the end of the loop
 
     dec = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-i', art_path, '-vf', f'scale={aw}:{ah}:flags=lanczos',
                             '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], stdout=subprocess.PIPE)
@@ -317,15 +361,22 @@ def render(cfg, base, fmt, out_path):
         # headline: first in, last out (words rise from / sink into a mask)
         for j, (im, x, y) in enumerate(words):
             q = eoq(clamp((t + 1 / FPS - j * 0.04) / 0.5))   # first word is already moving on frame 0
-            qo = eic(clamp((t - (P - 0.36 - (NW - 1) * 0.03) - (NW - 1 - j) * 0.03) / 0.28))
+            qo = eic(clamp((t - (P - 0.36 - (NW - 1) * 0.03) - (NW - 1 - j) * 0.03) / 0.28)) if E < 1e8 else 0
             if q <= 0 or qo >= 1: continue
             off = int((1 - q) * band_h + qo * band_h)
             band = Image.new('RGBA', (im.width, band_h), (0, 0, 0, 0)); band.alpha_composite(im, (0, off))
             fr.alpha_composite(band, (int(x), y - round(4 * k)))
+        if hl_head:   # swipes on once the headline is in; fades just before the headline sinks out
+            hs = (NW - 1) * 0.04 + 0.45
+            p = eoc(clamp((t - hs) / 0.5)); qo = clamp((t - (P - 0.62 - (NW - 1) * 0.03)) / 0.2) if E < 1e8 else 0
+            if p > 0 and qo < 1:
+                draw_marks(fr, hl_head, p, 1 - qo, lambda n: (X, head_y + n * lh - round(4 * k)))
 
         # subhead + byline
         items = [(s, (X, sub_y + n * sub_lh), 0.7 + n * 0.1, 8.65 + E) for n, s in enumerate(subs)]
-        if by2 is not None:
+        if not show_by:
+            pass
+        elif by2 is not None:
             items += [(by1, (by_x, by_y + round(3 * k)), 1.05, 8.5 + E), (by2, (by_x, by_y + round(27 * k)), 1.15, 8.5 + E)]
         else:   # name only: centre it on the avatar row
             items += [(by1, (by_x, by_y + AV // 2 - round(13 * k)), 1.05, 8.5 + E)]
@@ -333,17 +384,10 @@ def render(cfg, base, fmt, out_path):
             q = eoc(clamp((t - st) / 0.6)); qo = clamp((t - so) / 0.3)
             if q > 0 and qo < 1:
                 fr.alpha_composite(fade(im, q * (1 - qo)), (px, int(py + (1 - q) * 18 * k + qo * 10 * k)))
-        for n, marker, dark, hx0, hx1 in hls:   # highlighter swipes on once the subhead has landed
+        if hl_sub:   # swipes on once the subhead has landed
             p = eoc(clamp((t - 1.35) / 0.45)); qo = clamp((t - 8.65 - E) / 0.3)
             if p > 0 and qo < 1:
-                cut = int(hx0 + (hx1 - hx0) * p)
-                mk = marker.copy(); mk.paste((0, 0, 0, 0), (cut, 0, mk.width, mk.height))
-                dk = dark.crop((0, 0, mk.width, mk.height)) if dark.width >= mk.width else dark
-                mask = np.array(mk)[..., 3].astype(np.float32) / 255
-                da = np.array(dk); hh, ww = min(da.shape[0], mask.shape[0]), min(da.shape[1], mask.shape[1])
-                da = da[:hh, :ww].copy(); da[..., 3] = (da[..., 3] * mask[:hh, :ww]).astype(np.uint8)
-                py = int(sub_y + n * sub_lh + qo * 10 * k)
-                fr.alpha_composite(fade(mk, 1 - qo), (X, py)); fr.alpha_composite(fade(Image.fromarray(da), 1 - qo), (X, py))
+                draw_marks(fr, hl_sub, p, 1 - qo, lambda n: (X, sub_y + n * sub_lh + qo * 10 * k))
         for n, av in enumerate(avs):
             q = clamp((t - 0.9 - n * 0.12) / 0.5); qo = clamp((t - 8.45 - E + n * 0.06) / 0.3)
             if q > 0 and qo < 1:
