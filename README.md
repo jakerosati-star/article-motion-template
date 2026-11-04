@@ -72,6 +72,7 @@ List one or more authors. With two or more, the headshots overlap and pop in one
 
 **Optional fields:**
 - `"date"`: leave it out (e.g. for promos) and the author name sits centered next to the photo.
+- `"subhead_prominent": true`: for promos, makes the subhead (usually the offer) bigger, bolder and white, and keeps its lines balanced.
 - `"cta"`: for promos, adds a red call-to-action button (e.g. `"FIGHT THE GOOD FIGHT"`) at the right end of the byline row. It pops in after the byline and pulses gently. In 1:1, 4:5 and 9:16 the logo moves up to the right end of the tag row to make room.
 
 ## Author headshots
@@ -119,7 +120,7 @@ Outro times are anchored to the end of the art loop, so loops longer or shorter 
 
 ## Branding
 
-The red tag always reads **THE BULWARK** (the default when an article's `tag` is left out). For paid media we don't break out the show or newsletter name.
+The red tag always reads **THE BULWARK** (the default when an article's `tag` is left out). For paid media we don't break out the show or newsletter name. Promos use **JOIN THE BULWARK** and keep the tag as the only red element (no separate CTA button).
 
 
 Every card carries a white Bulwark logo at 70% opacity, always on screen (from `BW Logos (transparent)/`):

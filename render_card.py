@@ -164,6 +164,10 @@ def render(cfg, base, fmt, out_path):
         fH = font(700, 75, hs); lh = hs; hlines = [cfg['headline']]
     sublines = wrap(cfg.get('subhead', ''), fSub, TW) if cfg.get('subhead') else []
     sub_lh = round(36 * k)
+    sub_col = (215, 215, 215)
+    if cfg.get('subhead_prominent'):   # promos: the offer line is bigger, bolder and white
+        fSub = font(700, 100, round(36 * k)); sub_lh = round(46 * k); sub_col = (255, 255, 255)
+        sublines = balanced_wrap(cfg['subhead'], fSub, TW)
     # gap_tag = visible gap from the tag box to the top of the headline's capitals.
     # The font has built-in space above its capitals (bbox top of 'H'); subtract it, and add back the 4px the mask box is raised by.
     gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
@@ -191,7 +195,7 @@ def render(cfg, base, fmt, out_path):
             words.append((text_img(w, fH, 'white', height=band_h), x, head_y + li * lh))
             x += text_len(w + ' ', fH)
     NW = len(words)
-    subs = [text_img(s, fSub, (215, 215, 215)) for s in sublines]
+    subs = [text_img(s, fSub, sub_col) for s in sublines]
     # authors: either "authors": [{"name", "avatar"}, ...] or the single "author" / "avatar" pair
     authors = cfg.get('authors') or [{'name': cfg['author'], 'avatar': cfg.get('avatar')}]
     by1 = text_img(' AND '.join(a['name'] for a in authors), fBy, (235, 235, 235))
