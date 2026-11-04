@@ -99,6 +99,10 @@ def render(cfg, base, fmt, out_path):
     # --- build text pieces & measure block height
     tagtxt = text_img(cfg['tag'], fTag, 'white'); tw = tagtxt.width + round(24 * k); th = round(44 * k)
     hlines = balanced_wrap(cfg['headline'], fH, TW)
+    if len(hlines) == 1:   # short headline: scale it up (max 1.5x) while it still fits on one line
+        hs = L['head']
+        while hs < L['head'] * 1.5 and font(700, 75, hs + 2).getlength(cfg['headline']) <= TW: hs += 2
+        fH = font(700, 75, hs); lh = hs; hlines = [cfg['headline']]
     sublines = wrap(cfg.get('subhead', ''), fSub, TW) if cfg.get('subhead') else []
     sub_lh = round(36 * k)
     gap_tag = round(24 * k); gap_sub = round(24 * k); gap_by = round(24 * k)
@@ -108,7 +112,7 @@ def render(cfg, base, fmt, out_path):
         g0, g1 = L['group']; gap = round(44 * k)
         ay = g0 + max(0, (g1 - g0 - (ah + gap + block_h)) // 2)
         top = ay + ah + gap
-    elif L.get('center'):
+    elif L.get('center') or L['text_bottom'] - L['text_top'] - block_h > 60:   # also centre when lots of room is left
         top = top + max(0, (L['text_bottom'] - L['text_top'] - block_h) // 2)
     tag_y = top
     head_y = tag_y + th + gap_tag
@@ -126,18 +130,24 @@ def render(cfg, base, fmt, out_path):
             x += fH.getlength(w + ' ')
     NW = len(words)
     subs = [text_img(s, fSub, (215, 215, 215)) for s in sublines]
-    by1 = text_img(cfg['author'], fBy, (235, 235, 235)); by2 = text_img(cfg['date'], fBy, (200, 200, 200))
+    # authors: either "authors": [{"name", "avatar"}, ...] or the single "author" / "avatar" pair
+    authors = cfg.get('authors') or [{'name': cfg['author'], 'avatar': cfg.get('avatar')}]
+    by1 = text_img(' AND '.join(a['name'] for a in authors), fBy, (235, 235, 235))
+    by2 = text_img(cfg['date'], fBy, (200, 200, 200))
 
-    av = None
-    if cfg.get('avatar'):
+    avs = []                                   # overlapping circular headshots, left to right
+    for a in authors:
+        if not a.get('avatar'): continue
         big = AV * 4
-        ph = Image.open(os.path.join(base, cfg['avatar'])).convert('RGB')
+        ph = Image.open(os.path.join(base, a['avatar'])).convert('RGB')
         s = min(ph.size); ph = ph.crop(((ph.width - s) // 2, (ph.height - s) // 2, (ph.width + s) // 2, (ph.height + s) // 2)).resize((big, big), Image.LANCZOS)
         m = Image.new('L', (big, big), 0); ImageDraw.Draw(m).ellipse((0, 0, big - 1, big - 1), fill=255)
         av = Image.new('RGBA', (big, big), (0, 0, 0, 0)); av.paste(ph, (0, 0), m)
         ImageDraw.Draw(av).ellipse((2, 2, big - 3, big - 3), outline=(255, 255, 255, 255), width=7)
-        av = av.resize((AV, AV), Image.LANCZOS)
-    by_x = X + (AV + round(14 * k) if av else 0)
+        avs.append(av.resize((AV, AV), Image.LANCZOS))
+    step = round(AV * 0.72)
+    av_w = AV + step * (len(avs) - 1) if avs else 0
+    by_x = X + (av_w + round(14 * k) if avs else 0)
 
     art_path = os.path.join(base, cfg['art_loop'])
     P = probe_duration(art_path); N = int(round(P * FPS))
@@ -191,11 +201,12 @@ def render(cfg, base, fmt, out_path):
             q = eoc(clamp((t - st) / 0.6)); qo = clamp((t - so) / 0.3)
             if q > 0 and qo < 1:
                 fr.alpha_composite(fade(im, q * (1 - qo)), (px, int(py + (1 - q) * 18 * k + qo * 10 * k)))
-        if av is not None:
-            q = clamp((t - 1.5) / 0.5); qo = clamp((t - 8.45 - E) / 0.3)
+        for n, av in enumerate(avs):
+            q = clamp((t - 1.5 - n * 0.12) / 0.5); qo = clamp((t - 8.45 - E + n * 0.06) / 0.3)
             if q > 0 and qo < 1:
                 sz = max(1, int(AV * eob(q) * (1 - qo * qo)))
-                fr.alpha_composite(fade(av.resize((sz, sz), Image.LANCZOS), min(1, q * 2.5)), (X + (AV - sz) // 2, by_y + (AV - sz) // 2))
+                ax0 = X + n * step
+                fr.alpha_composite(fade(av.resize((sz, sz), Image.LANCZOS), min(1, q * 2.5)), (ax0 + (AV - sz) // 2, by_y + (AV - sz) // 2))
 
         out = fr.convert('RGB')
         if i == int(5 * FPS):

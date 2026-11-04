@@ -15,6 +15,10 @@ There are two steps. Step 2 is fully automatic. Step 1 is custom work for each i
 
 ### 1. Make the art loop (a seamless 16:9 video, 10s works well)
 
+**If the article art is already animated** (e.g. a GIF), just convert it to a 10s MP4 with whole cycles. See `articles/too-big-to-rig/make_art_loop.py`, which repeats a 2s GIF 5 times and keeps its frame timings exactly.
+
+**If the art is a still**, animate it yourself:
+
 `example/art_build/` shows how the Great Wave art was done:
 
 1. **`cutouts.py`**: cuts the elements that should move in and out (blimp, cat, stickers) out of the still, using `rembg`. If the cutout misses part of an element, as the cat's hat was, add a hand-drawn polygon to the mask.
@@ -59,6 +63,15 @@ Write an `article.json` next to your art loop and avatar (copy `example/article.
 python3 render_card.py path/to/article.json
 ```
 
+For more than one author, use an `authors` list instead of `author` and `avatar`. The headshots overlap and pop in one after another, and the names are joined with "AND":
+
+```json
+"authors": [
+  {"name": "WILLIAM KRISTOL", "avatar": "kristol.jpg"},
+  {"name": "ANDREW EGGER", "avatar": "egger.jpg"}
+]
+```
+
 Renders all four formats in about a minute. Add `--formats 1x1,9x16` to render only some. Each format also writes a `_still.png` frame from the 5-second mark for previews or thumbnails.
 
 ## Headline panel animation (built into `render_card.py`)
@@ -87,7 +100,7 @@ Special Gothic variable font (`fonts/`):
 | Subhead | 600 | 100 |
 | Byline | 700 | 90 |
 
-Headlines wrap normally. If that would leave one word alone on the last line, the lines are evened out instead. Sizes and positions per format are in the `LAYOUTS` table at the top of `render_card.py`.
+Short headlines that fit on one line are enlarged, up to 1.5×. When the text block leaves more than 60px of spare room in the panel, it is centred vertically. Headlines wrap normally. If that would leave one word alone on the last line, the lines are evened out instead. Sizes and positions per format are in the `LAYOUTS` table at the top of `render_card.py`.
 
 ## Requirements
 

@@ -1,0 +1,14 @@
+{
+  "art_loop": "art_loop.mp4",
+  "tag": "MORNING SHOTS",
+  "headline": "Too Big to Rig",
+  "subhead": "The beginning of the end of MAGA?",
+  "authors": [
+    {"name": "WILLIAM KRISTOL", "avatar": "kristol.jpg"},
+    {"name": "ANDREW EGGER", "avatar": "egger.jpg"}
+  ],
+  "date": "NOVEMBER 4",
+  "accent": "#E4002B",
+  "output_prefix": "out/too-big-to-rig",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
