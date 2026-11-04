@@ -221,24 +221,27 @@ def render(cfg, base, fmt, out_path):
         return th + gap_tag + len(hlines) * lh + (gap_sub + len(sublines) * sub_lh if sublines else 0) + (gap_by + AV if show_by else 0)
     block_h = measure()
     if not show_by:
-        # no byline: grow the copy (headline + subhead together, max 1.4x) into the room it leaves
+        # no byline: give the room to the copy. The subhead switches to the bold white style and grows more (max 1.25x);
+        # the headline grows only a little (max 1.1x), so the two stay readable without the headline overpowering it.
+        if not cfg.get('subhead_prominent'):
+            fSub = font(700, 100, round(36 * k)); sub_lh = round(46 * k); sub_col = (255, 255, 255)
         if L.get('group'): room = L['group'][1] - L['group'][0] - ah - round(44 * k)
         else: room = L['text_bottom'] - L['text_top'] - X
         base_h, base_s, base_sl = fH.spec[2], fSub.spec[2], sub_lh
         sub_spec = fSub.spec
         best = None
-        for step in range(0, 41):
+        for step in range(0, 26):
             f_ = 1 + step * 0.01
-            fH = font(700, 75, round(base_h * f_)); lh = fH.spec[2]
+            fH = font(700, 75, round(base_h * min(f_, 1.10))); lh = fH.spec[2]
             hlines = balanced_wrap(cfg['headline'], fH, TW)
-            fSub = font(sub_spec[0], sub_spec[1], round(base_s * f_)); sub_lh = round(base_sl * f_)
+            fSub = font(sub_spec[0], sub_spec[1], round(base_s * min(f_, 1.25))); sub_lh = round(base_sl * min(f_, 1.25))
             sublines = balanced_wrap(cfg['subhead'], fSub, TW) if cfg.get('subhead') else []
             gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
             if measure() <= room: best = f_
             else: break
         f_ = best or 1.0
-        fH = font(700, 75, round(base_h * f_)); lh = fH.spec[2]; hlines = balanced_wrap(cfg['headline'], fH, TW)
-        fSub = font(sub_spec[0], sub_spec[1], round(base_s * f_)); sub_lh = round(base_sl * f_)
+        fH = font(700, 75, round(base_h * min(f_, 1.10))); lh = fH.spec[2]; hlines = balanced_wrap(cfg['headline'], fH, TW)
+        fSub = font(sub_spec[0], sub_spec[1], round(base_s * min(f_, 1.25))); sub_lh = round(base_sl * min(f_, 1.25))
         sublines = balanced_wrap(cfg['subhead'], fSub, TW) if cfg.get('subhead') else []
         gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
         block_h = measure()
