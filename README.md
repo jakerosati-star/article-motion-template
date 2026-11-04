@@ -1,0 +1,94 @@
+# Article motion card template
+
+Looping social video for an article: animated art on top (or beside), headline panel below, in four sizes.
+
+| Format | Size | Layout |
+|---|---|---|
+| `1x1`  | 1080×1080 | Art on top, headline panel below |
+| `4x5`  | 1080×1350 | Same, larger type |
+| `9x16` | 1080×1920 | Art and text centred together inside the Reels/TikTok safe zone (y 250–1600) |
+| `16x9` | 1920×1080 | Headline column on the left, art on the right |
+
+## Making a new one
+
+There are two steps. Step 2 is fully automatic. Step 1 is custom work for each image.
+
+### 1. Make the art loop (a seamless 16:9 video, 10s works well)
+
+`example/art_build/` shows how the Great Wave art was done:
+
+1. **`cutouts.py`**: cuts the elements that should move in and out (blimp, cat, stickers) out of the still, using `rembg`. If the cutout misses part of an element, as the cat's hat was, add a hand-drawn polygon to the mask.
+2. **`animate_art.py`**:
+   - Fills in the background behind the cutouts (inpainting, plus mirrored texture for big areas like the cat).
+   - Composites each frame:
+     - Elements fly or pop in, hold, then leave before the loop point.
+     - Extra elements are tossed through or pop on and off mid-loop.
+     - Ambient motion: confetti, glow pulses, ray shimmer, camera push-in.
+   - Every ambient motion uses frequencies that repeat exactly over the loop length (`wv(k, t)`), so the last frame flows into the first.
+
+   Run it from inside `art_build/`. It writes `../art_loop.mp4`.
+
+When reusing this for a new image, the per-image parts are the bounding boxes, the glow positions (laser, eyes, ray centre) and the entry/exit timings.
+
+Timing convention (10s loop):
+- 0–3s: art elements enter.
+- 3.5–8.5s: extra motion.
+- 8.4–9.9s: elements exit.
+- 10s: the scene is back to the frame-0 state.
+
+### 2. Render the cards
+
+Write an `article.json` next to your art loop and avatar (copy `example/article.json`):
+
+```json
+{
+  "art_loop": "art_loop.mp4",
+  "tag": "THE TRIAD",
+  "headline": "Emergency Triad: MAGA Drowns Under a Blue Wave",
+  "subhead": "Pop the champagne. Preserve the documents.",
+  "author": "JONATHAN V. LAST",
+  "date": "NOVEMBER 4",
+  "avatar": "avatar.jpg",
+  "accent": "#E4002B",
+  "output_prefix": "out/blue-wave",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
+```
+
+```bash
+python3 render_card.py path/to/article.json
+```
+
+Renders all four formats in about a minute. Add `--formats 1x1,9x16` to render only some. Each format also writes a `_still.png` frame from the 5-second mark for previews or thumbnails.
+
+## Headline panel animation (built into `render_card.py`)
+
+The headline comes in first and leaves last, so it stays on screen as long as possible:
+
+| Time | Event |
+|---|---|
+| 0.05s | Headline rises in word by word from behind a mask |
+| 0.6s | Accent seam line wipes across (vertical on the art's left edge in 16:9) |
+| 0.8s | Tag box opens, then the tag text rises |
+| 1.2s | Subhead fades up |
+| 1.5s | Avatar pops in, then name and date |
+| last ~1.5s | Byline, subhead, tag and seam leave in reverse order |
+| last ~0.6s | Headline sinks out, ready to loop |
+
+Outro times are anchored to the end of the art loop, so loops longer or shorter than 10s still work.
+
+## Type
+
+Special Gothic variable font (`fonts/`):
+
+| Element | Weight | Width |
+|---|---|---|
+| Headline, tag | 700 | 75 (condensed) |
+| Subhead | 600 | 100 |
+| Byline | 700 | 90 |
+
+Headlines wrap normally. If that would leave one word alone on the last line, the lines are evened out instead. Sizes and positions per format are in the `LAYOUTS` table at the top of `render_card.py`.
+
+## Requirements
+
+`ffmpeg`, Python 3 with `pillow` and `numpy`. The art step also needs `opencv-python-headless` and `rembg[cpu]`.

@@ -1,0 +1,5 @@
+pillow
+numpy
+# only needed for building new art loops (example/art_build):
+opencv-python-headless
+rembg[cpu]
