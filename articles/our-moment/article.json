@@ -1,11 +1,9 @@
 {
+  "type": "appeal",
   "art_loop": "art_loop.mp4",
-  "tag": "JOIN THE BULWARK",
   "headline": "Celebrate the blue wave with 20% off Bulwark+",
   "subhead": "This is our moment. Let’s seize it.",
   "highlight": "20% off Bulwark+",
-  "byline": false,
-  "outro": false,
   "accent": "#E4002B",
   "output_prefix": "out/our-moment",
   "formats": ["1x1", "4x5", "9x16", "16x9"]

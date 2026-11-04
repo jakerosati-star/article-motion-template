@@ -9,6 +9,23 @@ Looping social video for an article: animated art on top (or beside), headline p
 | `9x16` | 1080×1920 | Art and text centred together inside the Reels/TikTok safe zone (y 250–1600) |
 | `16x9` | 1920×1080 | Headline column on the left, art on the right |
 
+## Card types
+
+Set `"type"` in the article's settings. Anything set explicitly still wins over the type's defaults.
+
+| Type | Use for | What it sets |
+|---|---|---|
+| `article` (default) | Promoting a published article | Tag **THE BULWARK**, author byline with headshot(s) and date, text animates in and out with the loop |
+| `appeal` | **Appeals**: Bulwark+ promos, sales and fundraising asks for paid media | Tag **JOIN THE BULWARK**, no byline, text stays on screen to the end of the loop, neon-yellow highlight color |
+
+**Appeal copy conventions** (from the "Our Moment" appeal, `articles/our-moment/`):
+- **The offer is the headline** (e.g. "Celebrate the blue wave with 20% off Bulwark+", no closing period). Highlight the offer itself with `"highlight"`.
+- The emotional line goes in the subhead (e.g. "This is our moment. Let's seize it."). Without a byline it's set bold and white, and grows more than the headline, so both stay readable while the offer stays on top.
+- **One red element only**: the JOIN THE BULWARK tag. No separate CTA button.
+- The logo sits at the right end of the tag row.
+
+**4:5 link space:** on social platforms the link goes in the black space at the bottom of the 4:5 frame. The bottom 170px are reserved (`link_zone` in `LAYOUTS`), so copy never grows into it. Leave that space empty.
+
 ## Making a new one
 
 There are three steps. Step 1 is custom work for each image, step 2 is fully automatic, and step 3 delivers the finals.

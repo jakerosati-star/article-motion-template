@@ -21,7 +21,8 @@ TAU = 2 * math.pi
 # head: headline font size. Everything else in the panel scales from it.
 LAYOUTS = {
     '1x1':  dict(size=(1080, 1080), art=(0, 0, 1080, 608),    text_x=58, text_w=964, text_top=648,  text_bottom=1080, head=82, bias=0.3),
-    '4x5':  dict(size=(1080, 1350), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=650,  text_bottom=1350, head=98, center=True, bias=0.3),
+    '4x5':  dict(size=(1080, 1350), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=650,  text_bottom=1350, head=98, center=True, bias=0.3,
+                 link_zone=170),   # bottom of the 4:5 frame is where social platforms put the link: copy must not grow into it
     '9x16': dict(size=(1080, 1920), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=0,    text_bottom=0,    head=112, group=(250, 1600)),
     '16x9': dict(size=(1920, 1080), art=(704, 202, 1216, 684), text_x=80, text_w=560, text_top=90,  text_bottom=990,  head=96, center=True, seam='left'),
 }
@@ -226,7 +227,7 @@ def render(cfg, base, fmt, out_path):
         if not cfg.get('subhead_prominent'):
             fSub = font(700, 100, round(36 * k)); sub_lh = round(46 * k); sub_col = (255, 255, 255)
         if L.get('group'): room = L['group'][1] - L['group'][0] - ah - round(44 * k)
-        else: room = L['text_bottom'] - L['text_top'] - X
+        else: room = L['text_bottom'] - L['text_top'] - X - L.get('link_zone', 0)
         base_h, base_s, base_sl = fH.spec[2], fSub.spec[2], sub_lh
         sub_spec = fSub.spec
         best = None
@@ -414,6 +415,18 @@ def render(cfg, base, fmt, out_path):
     enc.stdin.close(); enc.wait(); dec.stdout.close(); dec.wait()
 
 
+# Card types. An article's "type" fills in these defaults; anything set in the article's own settings wins.
+TYPES = {
+    'article': {},
+    'appeal': {                  # Bulwark+ appeals / promos for paid media
+        'tag': 'JOIN THE BULWARK',
+        'byline': False,         # no author row; the copy takes the room
+        'outro': False,          # text stays on screen through the end of the loop
+        'highlight_color': '#FFF200',
+    },
+}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('config')
@@ -421,6 +434,7 @@ def main():
     a = ap.parse_args()
     base = os.path.dirname(os.path.abspath(a.config))
     cfg = json.load(open(a.config))
+    cfg = {**TYPES.get(cfg.get('type', 'article'), {}), **cfg}
     fmts = a.formats.split(',') if a.formats else cfg.get('formats', list(LAYOUTS))
     prefix = os.path.join(base, cfg.get('output_prefix', 'out/card'))
     os.makedirs(os.path.dirname(prefix), exist_ok=True)
