@@ -3,9 +3,10 @@
   "tag": "THE TRIAD",
   "headline": "Emergency Triad: MAGA Drowns Under a Blue Wave",
   "subhead": "Pop the champagne. Preserve the documents.",
-  "author": "JONATHAN V. LAST",
+  "authors": [
+    {"name": "JONATHAN V. LAST"}
+  ],
   "date": "NOVEMBER 4",
-  "avatar": "avatar.jpg",
   "accent": "#E4002B",
   "output_prefix": "out/blue-wave",
   "formats": ["1x1", "4x5", "9x16", "16x9"]

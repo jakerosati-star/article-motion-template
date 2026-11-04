@@ -50,9 +50,8 @@ Write an `article.json` next to your art loop and avatar (copy `example/article.
   "tag": "THE TRIAD",
   "headline": "Emergency Triad: MAGA Drowns Under a Blue Wave",
   "subhead": "Pop the champagne. Preserve the documents.",
-  "author": "JONATHAN V. LAST",
+  "authors": [{"name": "JONATHAN V. LAST"}],
   "date": "NOVEMBER 4",
-  "avatar": "avatar.jpg",
   "accent": "#E4002B",
   "output_prefix": "out/blue-wave",
   "formats": ["1x1", "4x5", "9x16", "16x9"]
@@ -63,14 +62,26 @@ Write an `article.json` next to your art loop and avatar (copy `example/article.
 python3 render_card.py path/to/article.json
 ```
 
-For more than one author, use an `authors` list instead of `author` and `avatar`. The headshots overlap and pop in one after another, and the names are joined with "AND":
+List one or more authors. With two or more, the headshots overlap and pop in one after another, and the names are joined with "AND":
 
 ```json
-"authors": [
-  {"name": "WILLIAM KRISTOL", "avatar": "kristol.jpg"},
-  {"name": "ANDREW EGGER", "avatar": "egger.jpg"}
-]
+"authors": [{"name": "WILLIAM KRISTOL"}, {"name": "ANDREW EGGER"}]
 ```
+
+## Author headshots
+
+Headshots live in `headshots/` and are matched to authors by name automatically:
+
+| Author name | File |
+|---|---|
+| JONATHAN V. LAST | `headshots/jonathan-v-last.jpg` |
+| WILLIAM KRISTOL | `headshots/william-kristol.jpg` |
+
+The file name is the name in lowercase, with spaces and punctuation turned into hyphens. `.jpg`, `.png` and `.webp` all work. Square photos work best, since they're center-cropped to a circle.
+
+**Adding a new author:** on GitHub, open the `headshots` folder, click **Add file → Upload files**, drop in the photo named as above, and commit.
+
+To use a one-off photo instead, add `"avatar": "photo.jpg"` to that author (the path is relative to the article folder). If no photo is found, the card renders without one and prints a warning.
 
 Renders all four formats in about a minute. Add `--formats 1x1,9x16` to render only some. Each format also writes a `_still.png` frame from the 5-second mark for previews or thumbnails.
 

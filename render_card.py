@@ -6,7 +6,7 @@ Usage:  python3 render_card.py example/article.json [--formats 1x1,9x16]
 The art loop is any seamless-looping 16:9 video (see README for how to make one).
 The card loop length matches the art loop length.
 """
-import json, math, os, subprocess, sys, argparse
+import json, math, os, re, subprocess, sys, argparse
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 
@@ -98,6 +98,26 @@ def hex2rgb(h):
     h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
 
 
+HEADSHOTS = os.path.join(HERE, 'headshots')
+
+
+def slug(name):
+    """'Jonathan V. Last' -> 'jonathan-v-last' (the headshots/ file naming convention)."""
+    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+
+
+def find_headshot(author, base):
+    """An explicit "avatar" path wins (relative to the article folder); otherwise look up headshots/<name-slug>.*"""
+    if author.get('avatar'):
+        for p in (os.path.join(base, author['avatar']), os.path.join(HEADSHOTS, author['avatar'])):
+            if os.path.exists(p): return p
+    for ext in ('jpg', 'jpeg', 'png', 'webp'):
+        p = os.path.join(HEADSHOTS, f"{slug(author['name'])}.{ext}")
+        if os.path.exists(p): return p
+    print(f"  warning: no headshot for {author['name']!r} (expected headshots/{slug(author['name'])}.jpg); rendering without a photo", flush=True)
+    return None
+
+
 def probe_duration(path):
     out = subprocess.check_output(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', path])
     return float(out)
@@ -159,9 +179,10 @@ def render(cfg, base, fmt, out_path):
 
     avs = []                                   # overlapping circular headshots, left to right
     for a in authors:
-        if not a.get('avatar'): continue
+        path = find_headshot(a, base)
+        if not path: continue
         big = AV * 4
-        ph = Image.open(os.path.join(base, a['avatar'])).convert('RGB')
+        ph = Image.open(path).convert('RGB')
         s = min(ph.size); ph = ph.crop(((ph.width - s) // 2, (ph.height - s) // 2, (ph.width + s) // 2, (ph.height + s) // 2)).resize((big, big), Image.LANCZOS)
         m = Image.new('L', (big, big), 0); ImageDraw.Draw(m).ellipse((0, 0, big - 1, big - 1), fill=255)
         av = Image.new('RGBA', (big, big), (0, 0, 0, 0)); av.paste(ph, (0, 0), m)
