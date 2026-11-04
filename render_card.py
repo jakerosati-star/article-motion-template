@@ -124,7 +124,10 @@ def render(cfg, base, fmt, out_path):
         fH = font(700, 75, hs); lh = hs; hlines = [cfg['headline']]
     sublines = wrap(cfg.get('subhead', ''), fSub, TW) if cfg.get('subhead') else []
     sub_lh = round(36 * k)
-    gap_tag = round(24 * k); gap_sub = round(24 * k); gap_by = round(24 * k)
+    # gap_tag = visible gap from the tag box to the top of the headline's capitals.
+    # The font has built-in space above its capitals (bbox top of 'H'); subtract it, and add back the 4px the mask box is raised by.
+    gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
+    gap_sub = round(24 * k); gap_by = round(24 * k)
     block_h = th + gap_tag + len(hlines) * lh + (gap_sub + len(sublines) * sub_lh if sublines else 0) + gap_by + AV
     top = L['text_top']
     if L.get('group'):   # centre art + text together inside a safe zone (vertical formats)
