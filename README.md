@@ -100,7 +100,7 @@ Special Gothic variable font (`fonts/`):
 | Subhead | 600 | 100 |
 | Byline | 700 | 90 |
 
-Short headlines that fit on one line are enlarged, up to 1.5×. When the text block leaves more than 60px of spare room in the panel, it is centred vertically. Headlines wrap normally. If that would leave one word alone on the last line, the lines are evened out instead. Sizes and positions per format are in the `LAYOUTS` table at the top of `render_card.py`.
+Short headlines that fit on one line are enlarged, up to 1.5×. When the text block leaves more than 60px of spare room in the panel, it is moved down into that room. In 1:1 and 4:5, 30% of the spare room goes above the text and 70% below, so the headline stays close to the art (the `bias` setting in `LAYOUTS`). Headlines wrap normally. If that would leave one word alone on the last line, the lines are evened out instead. Sizes and positions per format are in the `LAYOUTS` table at the top of `render_card.py`.
 
 ## Requirements
 

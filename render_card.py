@@ -19,8 +19,8 @@ FPS = 30
 # text: left x, column width, top y (None = vertically centre in the space below/beside art).
 # head: headline font size. Everything else in the panel scales from it.
 LAYOUTS = {
-    '1x1':  dict(size=(1080, 1080), art=(0, 0, 1080, 608),    text_x=58, text_w=964, text_top=648,  text_bottom=1080, head=82),
-    '4x5':  dict(size=(1080, 1350), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=650,  text_bottom=1350, head=98, center=True),
+    '1x1':  dict(size=(1080, 1080), art=(0, 0, 1080, 608),    text_x=58, text_w=964, text_top=648,  text_bottom=1080, head=82, bias=0.3),
+    '4x5':  dict(size=(1080, 1350), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=650,  text_bottom=1350, head=98, center=True, bias=0.3),
     '9x16': dict(size=(1080, 1920), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=0,    text_bottom=0,    head=112, group=(250, 1600)),
     '16x9': dict(size=(1920, 1080), art=(704, 202, 1216, 684), text_x=80, text_w=560, text_top=90,  text_bottom=990,  head=96, center=True, seam='left'),
 }
@@ -132,7 +132,8 @@ def render(cfg, base, fmt, out_path):
         ay = g0 + max(0, (g1 - g0 - (ah + gap + block_h)) // 2)
         top = ay + ah + gap
     elif L.get('center') or L['text_bottom'] - L['text_top'] - block_h > 60:   # also centre when lots of room is left
-        top = top + max(0, (L['text_bottom'] - L['text_top'] - block_h) // 2)
+        # bias = share of the spare room placed above the text (0.5 = centred; lower sits closer to the art)
+        top = top + int(max(0, L['text_bottom'] - L['text_top'] - block_h) * L.get('bias', 0.5))
     tag_y = top
     head_y = tag_y + th + gap_tag
     sub_y = head_y + len(hlines) * lh + gap_sub
