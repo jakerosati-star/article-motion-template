@@ -77,9 +77,9 @@ Headshots live in `headshots/` and are matched to authors by name automatically:
 | JONATHAN V. LAST | `headshots/jonathan-v-last.jpg` |
 | WILLIAM KRISTOL | `headshots/william-kristol.jpg` |
 
-The file name is the name in lowercase, with spaces and punctuation turned into hyphens. `.jpg`, `.png` and `.webp` all work. Square photos work best, since they're center-cropped to a circle.
+The preferred file name is the name in lowercase with hyphens (`sam-stein.jpg`), but matching is forgiving: capitals, spaces, underscores and stray spaces are ignored (`Sam Stein .JPG` works). If there's no exact match, first and last name are enough, so a byline of "JONATHAN V. LAST" would also find `jonathan-last.jpg`. `.jpg`, `.png` and `.webp` all work. Square photos work best, since they're center-cropped to a circle.
 
-**Adding a new author:** on GitHub, open the `headshots` folder, click **Add file → Upload files**, drop in the photo named as above, and commit.
+**Adding a new author:** on GitHub, open the `headshots` folder, click **Add file → Upload files**, drop in the photo (named with the author's name), and commit.
 
 To use a one-off photo instead, add `"avatar": "photo.jpg"` to that author (the path is relative to the article folder). If no photo is found, the card renders without one and prints a warning.
 

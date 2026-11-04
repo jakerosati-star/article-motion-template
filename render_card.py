@@ -107,14 +107,20 @@ def slug(name):
 
 
 def find_headshot(author, base):
-    """An explicit "avatar" path wins (relative to the article folder); otherwise look up headshots/<name-slug>.*"""
+    """An explicit "avatar" path wins (relative to the article folder); otherwise find the author's photo in headshots/.
+    File names are matched loosely: 'Sam Stein .JPG', 'sam_stein.png' and 'sam-stein.jpg' all match "SAM STEIN".
+    If there's no exact match, first + last name is enough ("JONATHAN V. LAST" also matches 'jonathan-last.jpg')."""
     if author.get('avatar'):
         for p in (os.path.join(base, author['avatar']), os.path.join(HEADSHOTS, author['avatar'])):
             if os.path.exists(p): return p
-    for ext in ('jpg', 'jpeg', 'png', 'webp'):
-        p = os.path.join(HEADSHOTS, f"{slug(author['name'])}.{ext}")
-        if os.path.exists(p): return p
-    print(f"  warning: no headshot for {author['name']!r} (expected headshots/{slug(author['name'])}.jpg); rendering without a photo", flush=True)
+    want = slug(author['name']); parts = want.split('-')
+    files = [f for f in sorted(os.listdir(HEADSHOTS)) if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
+    for f in files:
+        if slug(os.path.splitext(f)[0]) == want: return os.path.join(HEADSHOTS, f)
+    for f in files:
+        have = slug(os.path.splitext(f)[0]).split('-')
+        if have[0] == parts[0] and have[-1] == parts[-1]: return os.path.join(HEADSHOTS, f)
+    print(f"  warning: no headshot for {author['name']!r} (expected headshots/{want}.jpg); rendering without a photo", flush=True)
     return None
 
 
