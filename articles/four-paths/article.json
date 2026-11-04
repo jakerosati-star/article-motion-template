@@ -1,0 +1,10 @@
+{
+  "art_loop": "art_loop.mp4",
+  "headline": "The Four Paths Ahead for Republicans",
+  "subhead": "MAGA without Trump? Reaganism without Reagan? The GOP’s next act could be a revival, a reinvention, or stumbling into more of the same.",
+  "authors": [{"name": "JOSHUA TAIT"}],
+  "date": "NOVEMBER 4",
+  "accent": "#E4002B",
+  "output_prefix": "out/four-paths",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}

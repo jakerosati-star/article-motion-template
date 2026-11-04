@@ -207,7 +207,7 @@ def render(cfg, base, fmt, out_path):
         hs = L['head']
         while hs < L['head'] * 1.5 and text_len(cfg['headline'], font(700, 75, hs + 2)) <= TW: hs += 2
         fH = font(700, 75, hs); lh = hs; hlines = [cfg['headline']]
-    sublines = wrap(cfg.get('subhead', ''), fSub, TW) if cfg.get('subhead') else []
+    sublines = balanced_wrap(cfg['subhead'], fSub, TW) if cfg.get('subhead') else []
     sub_lh = round(36 * k)
     sub_col = (215, 215, 215)
     if cfg.get('subhead_prominent'):   # promos: the offer line is bigger, bolder and white
