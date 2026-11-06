@@ -211,7 +211,8 @@ def render(cfg, base, fmt, out_path):
     sub_lh = round(36 * k)
     sub_col = (215, 215, 215)
     if cfg.get('subhead_prominent'):   # promos: the offer line is bigger, bolder and white
-        fSub = font(700, 100, round(36 * k)); sub_lh = round(46 * k); sub_col = (255, 255, 255)
+        ssc = cfg.get('subhead_scale', 1.0)   # extra size for short subheads
+        fSub = font(700, 100, round(36 * k * ssc)); sub_lh = round(46 * k * ssc); sub_col = (255, 255, 255)
         sublines = balanced_wrap(cfg['subhead'], fSub, TW)
     # gap_tag = visible gap from the tag box to the top of the headline's capitals.
     # The font has built-in space above its capitals (bbox top of 'H'); subtract it, and add back the 4px the mask box is raised by.

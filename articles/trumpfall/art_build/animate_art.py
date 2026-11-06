@@ -20,7 +20,7 @@ def wv(k, t, ph=0): return math.sin(TAU * k * t / P + ph)
 def ease(t): return 0.5 - 0.5 * math.cos(TAU * t / P)          # 0 at the loop point, 1 mid-loop
 def over(base, rgb, al): return base * (1 - al[..., None]) + rgb * al[..., None]
 
-BURSTS = [(3.1, 0.30), (6.9, 0.40)]   # glitch bursts (start, length)
+BURSTS = [(1.6, 0.25), (3.4, 0.35), (5.3, 0.22), (7.1, 0.45), (8.6, 0.25)]   # glitch bursts (start, length)
 def glitch_amount(t):
     for t0, d in BURSTS:
         if t0 <= t < t0 + d: return 0.5 + 0.5 * math.sin(math.pi * (t - t0) / d)
@@ -41,22 +41,25 @@ def glitch(img, amt, seed):
     return out
 
 enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
-                        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '16', '-preset', 'slow', '-movflags', '+faststart', '../art_loop.mp4'],
+                        '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', '../art_loop.mp4'],
                        stdin=subprocess.PIPE)
 for i in range(N):
     t = i / FPS; e = ease(t)
-    zb = 1 + 0.025 * e; dxb = 14 * wv(1, t)                       # collage drifts one way...
+    zb = 1 + 0.04 * e; dxb = 32 * wv(1, t)                        # collage drifts one way...
     Mb = np.array([[zb, 0, (1 - zb) * W / 2 + dxb], [0, zb, (1 - zb) * H / 2]], np.float32)
     f = cv2.warpAffine(bg, Mb, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
-    zf = 1 + 0.045 * e; dxf = -10 * wv(1, t)                      # ...the figure the other, and steps closer
+    amt = glitch_amount(t)
+    zf = 1 + 0.10 * e + 0.035 * amt; dxf = -22 * wv(1, t)          # ...the figure the other, steps closer, and lurches on each glitch
     Mf = np.array([[zf, 0, (1 - zf) * ANCHOR[0] + dxf], [0, zf, (1 - zf) * ANCHOR[1]]], np.float32)
     g = cv2.warpAffine(FIG, Mf, (W, H), flags=cv2.INTER_LINEAR, borderValue=0)
     f = over(f, g[..., :3], g[..., 3] / 255)
     if i > 0:                                                    # film grain + gentle exposure flicker (frame 0 stays clean)
         grain = np.random.default_rng(i).normal(0, 7, (H // 2, W // 2, 1)).astype(np.float32)
-        f = f * (1 + 0.025 * wv(17, t) * wv(5, t, 1)) + cv2.resize(grain, (W, H))[..., None]
-    amt = glitch_amount(t)
-    if amt > 0: f = glitch(f, amt, i // 2)                       # glitch pattern changes every other frame
+        f = f * (1 + 0.05 * wv(17, t) * wv(5, t, 1)) + cv2.resize(grain, (W, H))[..., None]
+    if amt > 0:                                                   # glitch + camera jolt
+        f = glitch(f, amt, i // 2)
+        r = random.Random(i); jx, jy = r.uniform(-14, 14) * amt, r.uniform(-8, 8) * amt
+        f = cv2.warpAffine(f, np.float32([[1, 0, jx], [0, 1, jy]]), (W, H), borderMode=cv2.BORDER_REFLECT)                       # glitch pattern changes every other frame
     out = np.clip(f, 0, 255).astype(np.uint8)
     if i in (0, 95, 100, 150, 212, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
     enc.stdin.write(out.tobytes())

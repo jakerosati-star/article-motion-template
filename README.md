@@ -89,6 +89,7 @@ List one or more authors. With two or more, the headshots overlap and pop in one
 
 **Optional fields:**
 - `"date"`: leave it out (e.g. for promos) and the author name sits centered next to the photo.
+- `"subhead_scale"`: with `subhead_prominent`, enlarges a short subhead further (e.g. `1.3`).
 - `"subhead_prominent": true`: for promos, makes the subhead (usually the offer) bigger, bolder and white, and keeps its lines balanced.
 - `"highlight"`: a phrase from the headline or subhead gets a neon-yellow highlighter mark (change it with `"highlight_color"`). The mark swipes on left to right once that line has landed, and the words under it turn black so they stay readable.
 - `"byline": false`: drops the author row and gives the room to the copy. The subhead switches to the bold white style and may grow up to 1.25x, the headline only up to 1.1x, so the hierarchy holds. The logo moves to the right end of the tag row.
