@@ -36,11 +36,17 @@ PH = {k: i * 1.3 for i, k in enumerate(ORDER)}
 def ss(x): x = max(0.0, min(1.0, x)); return x * x * (3 - 2 * x)
 def wv(k, t, ph=0): return math.sin(TAU * k * t / P + ph)
 def shove(t):
-    """Vance leans in from the first frame (0-0.6s), Trump knocked aside (0.5-1.0s) and wobbles, hold, both settle back (7.0-9.2s)"""
-    v = ss(t / 0.6) * (1 - ss((t - 7.0) / 1.6))
-    tr = ss((t - 0.5) / 0.5) * (1 - ss((t - 7.4) / 1.8))
-    wob = math.exp(-max(0, t - 1.0) * 3) * math.sin(max(0, t - 1.0) * 18) * (t > 1.0)
-    return v, tr, wob
+    """Two shoves. 1: Vance leans in from frame 1, Trump knocked aside by 1.0s, both settle back by ~3.6s.
+    2: again at 4.6s, a bit harder; settle back 8.0-9.6s so the loop resets."""
+    def one(t0, lean, hit, back0, back_len):
+        v = ss((t - t0) / lean) * (1 - ss((t - back0) / back_len))
+        tr = ss((t - t0 - lean * 0.8) / hit) * (1 - ss((t - back0 - 0.3) / back_len))
+        dt = t - t0 - lean * 0.8 - hit
+        wob = math.exp(-max(0, dt) * 3) * math.sin(max(0, dt) * 18) * (dt > 0)
+        return v, tr, wob
+    v1, t1, w1 = one(0.0, 0.6, 0.45, 2.4, 1.0)
+    v2, t2, w2 = one(4.6, 0.55, 0.4, 8.0, 1.3)
+    return max(v1, 1.15 * v2), max(t1, 1.15 * t2), w1 + w2
 
 enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
                         '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '19', '-preset', 'slow', '-movflags', '+faststart', '../art_loop.mp4'],
@@ -69,6 +75,6 @@ for i in range(N):
     z = 1 + 0.03 * (0.5 - 0.5 * math.cos(TAU * t / P))
     Mc = np.float32([[z, 0, (1 - z) * W / 2], [0, z, (1 - z) * H / 2]])
     out = cv2.warpAffine(np.clip(f, 0, 255).astype(np.uint8), Mc, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
-    if i in (0, 9, 18, 30, 240, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
+    if i in (0, 30, 105, 165, 290, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
     enc.stdin.write(out.tobytes())
 enc.stdin.close(); enc.wait()
