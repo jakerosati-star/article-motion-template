@@ -57,7 +57,7 @@ tm = cv2.remap(np.ones_like(ref_t), mu, mv, cv2.INTER_LINEAR, borderMode=cv2.BOR
 recon = recon * (1 - tm) + top * tm; cover = np.maximum(cover, tm)
 recon_rgb = np.repeat(recon[..., None], 3, 2)
 # new bill layer: original pixels where visible, reconstruction where Vought / the dome covered them
-hidden = ndimage.binary_dilation(P['vought'] > 0.3, iterations=3) & (cover > 0.5) & ~(P['dome'] > 0.3)   # only what Vought covered
+hidden = ndimage.binary_dilation(occl, iterations=3) & (cover > 0.5)   # what Vought and the dome covered (the stack rocks out from behind both)
 alpha = np.maximum(P['bills'], hidden.astype(np.float32))
 blend = ndimage.gaussian_filter(hidden.astype(np.float32), 1.5)
 rgb = a * (1 - blend[..., None]) + recon_rgb * blend[..., None]
