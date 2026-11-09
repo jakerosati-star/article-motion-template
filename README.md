@@ -38,7 +38,7 @@ Add `"art_still"` (the article's still image) to the article settings, then:
 python3 render_card.py articles/<slug>/article.json --preview
 ```
 
-In about 3 seconds this writes one still per format, plus `out/<slug>_layout_preview.png` showing all four side by side, with every text element on screen. **Send the side-by-side image to the requester and wait for their reaction** before animating the art or rendering video. Copy, wrap and sizing fixes are cheap at this stage.
+In about 3 seconds this writes one still per format, plus `out/<slug>_layout_preview.png` showing all four side by side, with every text element on screen. The side-by-side image shades the areas each platform's UI covers in red: 9:16 top 250px (profile header), bottom 420px (caption, CTA) and right 140px (like/comment/share buttons), plus the 4:5 bottom 170px (link bar). The layouts keep text, the logo and the byline out of these; check that the art's key subject is clear of them too. **Send the side-by-side image to the requester and wait for their reaction** before animating the art or rendering video. Copy, wrap and sizing fixes are cheap at this stage.
 
 ### 1. Make the art loop (a seamless 16:9 video, 10s works well)
 

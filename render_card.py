@@ -23,7 +23,9 @@ LAYOUTS = {
     '1x1':  dict(size=(1080, 1080), art=(0, 0, 1080, 608),    text_x=58, text_w=964, text_top=648,  text_bottom=1080, head=82, bias=0.3),
     '4x5':  dict(size=(1080, 1350), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=650,  text_bottom=1350, head=98, center=True, bias=0.3,
                  link_zone=170),   # bottom of the 4:5 frame is where social platforms put the link: copy must not grow into it
-    '9x16': dict(size=(1080, 1920), art=(0, 0, 1080, 608),    text_x=64, text_w=952, text_top=0,    text_bottom=0,    head=112, group=(250, 1600)),
+    # 9:16 safe zone (Reels / TikTok / Stories): top 250px (profile header), bottom 420px (caption, CTA),
+    # right 140px (like / comment / share buttons) are kept clear of text, logo and key art
+    '9x16': dict(size=(1080, 1920), art=(0, 0, 1080, 608),    text_x=64, text_w=852, text_top=0,    text_bottom=0,    head=112, group=(250, 1500)),
     '16x9': dict(size=(1920, 1080), art=(704, 202, 1216, 684), text_x=80, text_w=560, text_top=90,  text_bottom=990,  head=96, center=True, seam='left'),
 }
 
@@ -264,9 +266,9 @@ def render(cfg, base, fmt, out_path, preview=False):
         g0, g1 = L['group']; gap = round(44 * k)
         ay = g0 + max(0, (g1 - g0 - (ah + gap + block_h)) // 2)
         top = ay + ah + gap
-    elif L.get('center') or L['text_bottom'] - L['text_top'] - block_h > 60:   # also centre when lots of room is left
+    elif L.get('center') or L['text_bottom'] - L.get('link_zone', 0) - L['text_top'] - block_h > 60:   # also centre when lots of room is left
         # bias = share of the spare room placed above the text (0.5 = centred; lower sits closer to the art)
-        tb = L['text_bottom']
+        tb = L['text_bottom'] - L.get('link_zone', 0)   # never into the platform's link bar (4:5)
         if show_by and spec_.get('at') == 'bottom' and cfg.get('logo', True):   # never centre into the bottom logo
             tb = spec_['y'] - spec_['h'] - round(36 * k)
         top = top + int(max(0, tb - L['text_top'] - block_h) * L.get('bias', 0.5))
@@ -481,6 +483,18 @@ def main():
         ims = [im.resize((round(im.width * Hs / im.height), Hs), Image.LANCZOS) for im in ims]
         sheet = Image.new('RGB', (sum(im.width for im in ims) + 40 * (len(ims) + 1), Hs + 80), (60, 60, 60)); x = 40
         for im in ims: sheet.paste(im, (x, 40)); x += im.width + 40
+        # platform UI overlays, drawn on the sheet only: red = covered by app UI, keep important things out
+        UI = {'9x16': [(0, 0, 1080, 250, 'profile / header'), (0, 1500, 1080, 1920, 'caption / CTA'), (940, 250, 1080, 1500, 'buttons')],
+              '4x5': [(0, 1180, 1080, 1350, 'link / CTA bar')]}
+        x = 40
+        for f, im in zip(fmts, ims):
+            CW, CH = LAYOUTS[f]['size']; sc = Hs / CH
+            ov = Image.new('RGBA', im.size, (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
+            for x0, y0, x1, y1, lab in UI.get(f, []):
+                d.rectangle((x0 * sc, y0 * sc, x1 * sc, y1 * sc), fill=(255, 40, 40, 70), outline=(255, 60, 60, 220), width=2)
+                d.text((x0 * sc + 6, y0 * sc + 4), lab, fill=(255, 255, 255, 230), font=font(700, 90, 16))
+            base_ = sheet.crop((x, 40, x + im.width, 40 + im.height)).convert('RGBA'); base_.alpha_composite(ov)
+            sheet.paste(base_.convert('RGB'), (x, 40)); x += im.width + 40
         sheet.save(f'{prefix}_layout_preview.png'); print('preview', f'{prefix}_layout_preview.png', flush=True)
         return
     for f in fmts:
