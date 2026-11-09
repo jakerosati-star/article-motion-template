@@ -1,5 +1,5 @@
-"""Bar Crawl art: drinks slosh and spill over the rims in turn, a sparkle off Ossoff's smile, the election screen
-flickers and LIVE pulses, slow push-in.
+"""Bar Crawl art: light glints sweep across the glasses, a sparkle off Ossoff's smile, the election screen
+flickers and LIVE pulses, slow push-in. No drawn-on liquid, no moving cutouts.
 Seamless 10s loop; frame 0 is the original. Writes ../art_loop.mp4"""
 import math, random, subprocess
 import numpy as np, cv2
@@ -40,7 +40,7 @@ PATHS = {(0, 'L'): arc(791, 513, 926, 696), (0, 'R'): arc(1071, 513, 934, 696), 
 DRIPS = [(0, 'R', 1.2), (2, 'L', 2.6), (0, 'L', 5.0), (2, 'R', 7.2)]   # (glass, side, start): the two martinis overflow
 SPLASHES = [3.8, 6.3]                                          # the tall middle glass splashes instead (its rim is well above the drink)
 DRIP_LEN = 1.9
-SPARKS = [2.0, 6.1]; SMILE = (991, 232)
+SPARKS = [3.0, 7.6]; SMILE = (991, 232)
 
 def draw_drip(f, g, side, u):
     """an overflow running down the outside of the glass: lip at the rim, a wet trail, a bead at the front"""
@@ -76,28 +76,20 @@ def sparkle(u):
 enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
                         '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '19', '-preset', 'slow', '-movflags', '+faststart', '../art_loop.mp4'],
                        stdin=subprocess.PIPE)
+diag = xx * 0.8 + yy * 0.6
+GLINTS = [(1.0, 0), (1.35, 1), (1.7, 2), (5.6, 0), (5.95, 1), (6.3, 2)]   # light sweeps across each glass in turn
+GL_X = [790, 1240, 1475]
 for i in range(N):
     t = i / FPS
-    dy = np.zeros((H, W), np.float32)
-    for g in range(3):                                          # liquid surface tilts side to side
-        cx, cy = CEN[g]; dy += tilt(g, t) * (xx - cx) * inner[g]
-    f = cv2.remap(a, xx, yy + dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    f = a.copy()
     fl = 1 + 0.035 * (wv(13, t) * wv(5, t, 1.2) + 0.5 * wv(29, t, 0.3) - 0.5 * math.sin(0.3))
     pulse = 0.5 - 0.5 * math.cos(TAU * 5 * t / P)
     f = f * (1 + (fl - 1) * screen)[..., None] + (70 * pulse * live)[..., None] * np.array([1, 0.85, 1], np.float32)
-    for g, side, t0 in DRIPS:
-        u = (t - t0) / DRIP_LEN
-        if 0 < u < 1: draw_drip(f, g, side, u)
-    for t0 in SPLASHES:
-        u = (t - t0) / 0.9
+    for t0, g in GLINTS:
+        u = (t - t0) / 0.55
         if 0 < u < 1:
-            lay = np.zeros((H, W), np.float32); r = random.Random(int(t0 * 10))
-            for _ in range(11):
-                vx, vy, r0 = r.uniform(-130, 130), r.uniform(-260, -150), r.uniform(4, 9)
-                x = 1378 + r.uniform(-60, 60) + vx * u; y = 482 + vy * u + 420 * u * u     # up and back down
-                if y < 486: cv2.circle(lay, (int(x * 4), int(y * 4)), int(r0 * 4 * (1 - 0.4 * u)), 0.9, -1, cv2.LINE_AA, 2)
-            lay = cv2.GaussianBlur(lay, (0, 0), 1.0)
-            f = f * (1 - 0.85 * lay[..., None]) + np.array([225, 205, 255], np.float32) * 0.85 * lay[..., None]
+            pos = GL_X[g] * 0.8 + 300 + u * 420
+            f = f + (110 * np.exp(-((diag - pos) ** 2) / (2 * 26 ** 2)) * glasses[g] * math.sin(math.pi * u))[..., None]
     for t0 in SPARKS:
         u = (t - t0) / 0.7
         if 0 < u < 1:
@@ -106,6 +98,6 @@ for i in range(N):
     z = 1 + 0.035 * (0.5 - 0.5 * math.cos(TAU * t / P))
     Mc = np.float32([[z, 0, (1 - z) * W * 0.55], [0, z, (1 - z) * H * 0.5]])
     out = cv2.warpAffine(np.clip(f, 0, 255).astype(np.uint8), Mc, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
-    if i in (0, 45, 63, 78, 120, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
+    if i in (0, 33, 93, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
     enc.stdin.write(out.tobytes())
 enc.stdin.close(); enc.wait()
