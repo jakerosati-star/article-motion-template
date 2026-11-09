@@ -28,7 +28,17 @@ Set `"type"` in the article's settings. Anything set explicitly still wins over 
 
 ## Making a new one
 
-There are three steps. Step 1 is custom work for each image, step 2 is fully automatic, and step 3 delivers the finals.
+There are four steps, starting with a layout preview (step 0). Step 1 is custom work for each image, step 2 is fully automatic, and step 3 delivers the finals.
+
+### 0. Layout preview (always first, before any animation or rendering)
+
+Add `"art_still"` (the article's still image) to the article settings, then:
+
+```bash
+python3 render_card.py articles/<slug>/article.json --preview
+```
+
+In about 3 seconds this writes one still per format, plus `out/<slug>_layout_preview.png` showing all four side by side, with every text element on screen. **Send the side-by-side image to the requester and wait for their reaction** before animating the art or rendering video. Copy, wrap and sizing fixes are cheap at this stage.
 
 ### 1. Make the art loop (a seamless 16:9 video, 10s works well)
 

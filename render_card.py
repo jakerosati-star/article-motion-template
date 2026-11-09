@@ -188,7 +188,7 @@ def probe_duration(path):
     return float(out)
 
 
-def render(cfg, base, fmt, out_path):
+def render(cfg, base, fmt, out_path, preview=False):
     L = LAYOUTS[fmt]
     CW, CH = L['size']
     ax, ay, aw, ah = L['art']
@@ -341,23 +341,32 @@ def render(cfg, base, fmt, out_path):
         cta.alpha_composite(ctxt, ((bw_ - ctxt.width) // 2 + round(2 * k), (bh_ - ctxt.height) // 2 + round(3 * k)))
         cta_c = (X + TW - bw_ / 2, by_y + AV / 2)
 
-    art_path = os.path.join(base, cfg['art_loop'])
-    P = probe_duration(art_path); N = int(round(P * FPS))
+    if preview:   # layout preview: one still frame, everything on screen, art = the unanimated still
+        still = Image.open(os.path.join(base, cfg['art_still'])).convert('RGB').resize((aw, ah), Image.LANCZOS)
+        P = 10.0; N = 1
+    else:
+        art_path = os.path.join(base, cfg['art_loop'])
+        P = probe_duration(art_path); N = int(round(P * FPS))
     E = P - 10.0   # timings below were designed on a 10s loop; outro is anchored to the loop end
     if cfg.get('outro') is False: E = 1e9   # text stays on screen through the end of the loop
 
-    dec = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-i', art_path, '-vf', f'scale={aw}:{ah}:flags=lanczos',
+    if not preview:
+      dec = subprocess.Popen(['ffmpeg', '-loglevel', 'error', '-i', art_path, '-vf', f'scale={aw}:{ah}:flags=lanczos',
                             '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], stdout=subprocess.PIPE)
-    enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{CW}x{CH}',
+      enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{CW}x{CH}',
                             '-r', str(FPS), '-i', '-', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '17', '-preset', 'slow',
                             '-movflags', '+faststart', out_path], stdin=subprocess.PIPE)
     seam = L.get('seam', 'bottom'); sw = max(4, round(5 * k))
     for i in range(N):
-        t = i / FPS
-        raw = dec.stdout.read(aw * ah * 3)
-        if len(raw) < aw * ah * 3: break
+        if preview:
+            t = 5.0; art = still
+        else:
+            t = i / FPS
+            raw = dec.stdout.read(aw * ah * 3)
+            if len(raw) < aw * ah * 3: break
+            art = Image.frombytes('RGB', (aw, ah), raw)
         fr = Image.new('RGBA', (CW, CH), (0, 0, 0, 255))
-        fr.paste(Image.frombytes('RGB', (aw, ah), raw), (ax, ay))
+        fr.paste(art, (ax, ay))
         d = ImageDraw.Draw(fr)
 
         # accent seam: wipes in, retracts before the headline leaves
@@ -425,6 +434,8 @@ def render(cfg, base, fmt, out_path):
         if logo is not None:   # always on screen
             fr.alpha_composite(logo, logo_xy)
         out = fr.convert('RGB')
+        if preview:
+            out.save(out_path); return
         if i == int(5 * FPS):
             out.save(out_path.replace('.mp4', '_still.png'))
         enc.stdin.write(out.tobytes())
@@ -451,6 +462,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('config')
     ap.add_argument('--formats', help='comma list, e.g. 1x1,9x16 (default: from config)')
+    ap.add_argument('--preview', action='store_true', help='layout check: one still per format from art_still, plus a side-by-side sheet; no video')
     a = ap.parse_args()
     base = os.path.dirname(os.path.abspath(a.config))
     cfg = json.load(open(a.config))
@@ -461,6 +473,16 @@ def main():
     fmts = a.formats.split(',') if a.formats else cfg.get('formats', list(LAYOUTS))
     prefix = os.path.join(base, cfg.get('output_prefix', 'out/card'))
     os.makedirs(os.path.dirname(prefix), exist_ok=True)
+    if a.preview:
+        paths = []
+        for f in fmts:
+            out = f'{prefix}_{f}_preview.png'; render(cfg, base, f, out, preview=True); paths.append(out)
+        ims = [Image.open(p) for p in paths]; Hs = 900
+        ims = [im.resize((round(im.width * Hs / im.height), Hs), Image.LANCZOS) for im in ims]
+        sheet = Image.new('RGB', (sum(im.width for im in ims) + 40 * (len(ims) + 1), Hs + 80), (60, 60, 60)); x = 40
+        for im in ims: sheet.paste(im, (x, 40)); x += im.width + 40
+        sheet.save(f'{prefix}_layout_preview.png'); print('preview', f'{prefix}_layout_preview.png', flush=True)
+        return
     for f in fmts:
         out = f'{prefix}_{f}.mp4'
         print('rendering', out, flush=True)

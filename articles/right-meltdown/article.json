@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "The Right’s Election Meltdown Is Just Getting Started",
+  "subhead": "Everyone with a podcast is feeling terrible, and they’re ready to fight about it!",
+  "authors": [{"name": "WILL SOMMER"}],
+  "date": "NOVEMBER 5",
+  "accent": "#E4002B",
+  "output_prefix": "out/right-meltdown",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
