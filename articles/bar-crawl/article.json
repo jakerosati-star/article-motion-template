@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "My Bar Crawl Through the MAGA Meltdown",
+  "subhead": "Plus: House Republicans take stock of their diminished factions and prepare to pick a new leader.",
+  "authors": [{"name": "JOE PERTICONE"}],
+  "date": "NOVEMBER 5",
+  "accent": "#E4002B",
+  "output_prefix": "out/bar-crawl",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
