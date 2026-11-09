@@ -36,10 +36,10 @@ PH = {k: i * 1.3 for i, k in enumerate(ORDER)}
 def ss(x): x = max(0.0, min(1.0, x)); return x * x * (3 - 2 * x)
 def wv(k, t, ph=0): return math.sin(TAU * k * t / P + ph)
 def shove(t):
-    """0 -> 1 -> 0: Vance leans in (3.4-4.4s), Trump knocked aside (4.0-4.6s), hold, both settle back (6.8-8.2s)"""
-    v = ss((t - 3.4) / 1.0) * (1 - ss((t - 6.8) / 1.4))
-    tr = ss((t - 4.0) / 0.6) * (1 - ss((t - 7.0) / 1.2))
-    wob = math.exp(-max(0, t - 4.6) * 3) * math.sin(max(0, t - 4.6) * 18) * (t > 4.6)      # Trump wobbles after the hit
+    """Vance leans in from the first frame (0-0.6s), Trump knocked aside (0.5-1.0s) and wobbles, hold, both settle back (7.0-9.2s)"""
+    v = ss(t / 0.6) * (1 - ss((t - 7.0) / 1.6))
+    tr = ss((t - 0.5) / 0.5) * (1 - ss((t - 7.4) / 1.8))
+    wob = math.exp(-max(0, t - 1.0) * 3) * math.sin(max(0, t - 1.0) * 18) * (t > 1.0)
     return v, tr, wob
 
 enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS), '-i', '-',
@@ -69,6 +69,6 @@ for i in range(N):
     z = 1 + 0.03 * (0.5 - 0.5 * math.cos(TAU * t / P))
     Mc = np.float32([[z, 0, (1 - z) * W / 2], [0, z, (1 - z) * H / 2]])
     out = cv2.warpAffine(np.clip(f, 0, 255).astype(np.uint8), Mc, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
-    if i in (0, 60, 138, 165, 230, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
+    if i in (0, 9, 18, 30, 240, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
     enc.stdin.write(out.tobytes())
 enc.stdin.close(); enc.wait()
