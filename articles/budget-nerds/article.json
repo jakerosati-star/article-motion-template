@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "Revenge of the (Democratic Budget) Nerds",
+  "subhead": "Trump’s rogue OMB director is about to get his wings clipped.",
+  "authors": [{"name": "CATHERINE RAMPELL"}],
+  "date": "NOVEMBER 6",
+  "accent": "#E4002B",
+  "output_prefix": "out/budget-nerds",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
