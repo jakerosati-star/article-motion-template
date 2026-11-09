@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "Defund WAR!",
+  "subhead": "One weird trick to get accountability, lower gas prices, and hurt Republicans.",
+  "authors": [{"name": "JONATHAN V. LAST"}],
+  "date": "NOVEMBER 9",
+  "accent": "#E4002B",
+  "output_prefix": "out/defund-war",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
