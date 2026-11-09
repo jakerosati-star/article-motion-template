@@ -3,6 +3,7 @@
   "headline": "Trumpfall",
   "subhead": "Did we finally break him?",
   "subhead_prominent": true,
+  "show_subhead": true,
   "subhead_scale": 1.3,
   "authors": [{"name": "JONATHAN V. LAST"}],
   "accent": "#E4002B",

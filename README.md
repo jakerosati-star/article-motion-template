@@ -15,7 +15,7 @@ Set `"type"` in the article's settings. Anything set explicitly still wins over 
 
 | Type | Use for | What it sets |
 |---|---|---|
-| `article` (default) | Promoting a published article | Tag **THE BULWARK**, author byline with headshot(s) and date, text animates in and out with the loop |
+| `article` (default) | Promoting a published article | Tag **THE BULWARK**, headline, author name(s) with headshot(s). **No subhead or date**: keep them in the settings for reference, they just don't show (turn back on per article with `"show_subhead": true` / `"show_date": true`). Text animates in and out with the loop |
 | `appeal` | **Appeals**: Bulwark+ promos, sales and fundraising asks for paid media | Tag **JOIN THE BULWARK**, no byline, text stays on screen to the end of the loop, neon-yellow highlight color |
 
 **Appeal copy conventions** (from the "Our Moment" appeal, `articles/our-moment/`):
@@ -132,7 +132,7 @@ The headline comes in first and leaves last, so it stays on screen as long as po
 | 0s | Headline starts rising word by word from behind a mask, already moving on the first frame |
 | 0.25s | Accent seam line wipes across (vertical on the art's left edge in 16:9) |
 | 0.35s | Tag box opens, then the tag text rises |
-| 0.7s | Subhead fades up |
+| 0.7s | Subhead fades up (appeals, or articles with `show_subhead`) |
 | 0.9s | Avatar(s) pop in, then name and date |
 | last ~1.5s | Byline, subhead, tag and seam leave in reverse order |
 | last ~0.6s | Headline sinks out, ready to loop |

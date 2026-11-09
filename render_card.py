@@ -430,12 +430,16 @@ def render(cfg, base, fmt, out_path):
 
 # Card types. An article's "type" fills in these defaults; anything set in the article's own settings wins.
 TYPES = {
-    'article': {},
+    'article': {                 # standard article cards: image + headline + byline only
+        'show_subhead': False,
+        'show_date': False,
+    },
     'appeal': {                  # Bulwark+ appeals / promos for paid media
         'tag': 'JOIN THE BULWARK',
         'byline': False,         # no author row; the copy takes the room
         'outro': False,          # text stays on screen through the end of the loop
         'highlight_color': '#FFF200',
+        'show_subhead': True,
     },
 }
 
@@ -448,6 +452,9 @@ def main():
     base = os.path.dirname(os.path.abspath(a.config))
     cfg = json.load(open(a.config))
     cfg = {**TYPES.get(cfg.get('type', 'article'), {}), **cfg}
+    # the subhead / date stay in the article's settings for reference; the type decides whether they show
+    if not cfg.get('show_subhead', True): cfg.pop('subhead', None)
+    if not cfg.get('show_date', True): cfg.pop('date', None)
     fmts = a.formats.split(',') if a.formats else cfg.get('formats', list(LAYOUTS))
     prefix = os.path.join(base, cfg.get('output_prefix', 'out/card'))
     os.makedirs(os.path.dirname(prefix), exist_ok=True)
