@@ -1,6 +1,6 @@
 """Budget Nerds art: Vought shrinks down ("wings clipped") within the first second, the Capitol leans in over him,
 the bill stack fans back and forth, the green panel pulses, slow push-in. Seamless 10s loop; frame 0 is the
-original. Run layers.py first. Writes ../art_loop.mp4"""
+original. Run layers.py, then fill_bills.py. Writes ../art_loop.mp4"""
 import math, subprocess
 import numpy as np, cv2
 from PIL import Image
@@ -9,9 +9,11 @@ W, H = 1920, 1080; P = 10.0; FPS = 30; N = int(P * FPS); TAU = 2 * math.pi
 a = np.array(Image.open('still_1920.png').convert('RGB')).astype(np.float32)
 bg = np.array(Image.open('bg.png').convert('RGB')).astype(np.float32)
 PC = dict(np.load('pieces.npz'))
-L = {k: np.dstack([a, m * 255]).astype(np.float32) for k, m in PC.items()}
+L = {k: np.dstack([a, PC[k] * 255]).astype(np.float32) for k in ('vought', 'dome')}
+# bills: the original stack with the part Vought hid rebuilt from a reference $100 note (fill_bills.py)
+L['bills'] = np.dstack([np.load('bills_rgb.npy').astype(np.float32), PC['bills_full'] * 255])
 green = np.zeros((H, W), np.float32); green[207:872, 308:1610] = 1
-green *= 1 - np.maximum.reduce([PC['bills'], PC['dome'], PC['vought']])
+green *= 1 - np.maximum.reduce([PC['bills_full'], PC['dome'], PC['vought']])
 
 def ss(x): x = max(0.0, min(1.0, x)); return x * x * (3 - 2 * x)
 def wv(k, t, ph=0): return math.sin(TAU * k * t / P + ph)
