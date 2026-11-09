@@ -285,6 +285,11 @@ def render(cfg, base, fmt, out_path, preview=False):
     sub_y = head_y + len(hlines) * lh + gap_sub
     by_y = (sub_y + len(sublines) * sub_lh if sublines else head_y + len(hlines) * lh) + gap_by
 
+    # 16:9: short wrapped lines leave a gap before the art; slide the text block right so it ends 72px from the art
+    if L.get('seam') == 'left':
+        maxw = max([text_len(l, fH) for l in hlines] + [tw])
+        X = max(X, int(ax - round(72 * k) - maxw))
+
     # clip box for the rise/sink animation must include descenders (g, j, p, q, y)
     band_h = fH.getbbox('Agjpqy')[3] + round(8 * k)
     words = []
