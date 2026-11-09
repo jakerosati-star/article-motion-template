@@ -199,6 +199,9 @@ def render(cfg, base, fmt, out_path):
     fH = font(700, 75, L['head']); lh = int(L['head'] * 1.0)
     fTag = font(700, 75, round(30 * k)); fSub = font(600, 100, round(27 * k)); fBy = font(700, 90, round(18 * k))
     AV = round(50 * k)
+    if not cfg.get('date'):   # name-only byline (article standard): bigger name and photo
+        bs = cfg.get('byline_scale', 1.45)
+        fBy = font(700, 90, round(18 * k * bs)); AV = round(50 * k * bs)
 
     # --- build text pieces & measure block height
     tagtxt = text_img(cfg.get('tag') or 'THE BULWARK', fTag, 'white'); tw = tagtxt.width + round(24 * k); th = round(44 * k)
@@ -396,7 +399,7 @@ def render(cfg, base, fmt, out_path):
         elif by2 is not None:
             items += [(by1, (by_x, by_y + round(3 * k)), 1.05, 8.5 + E), (by2, (by_x, by_y + round(27 * k)), 1.15, 8.5 + E)]
         else:   # name only: centre it on the avatar row
-            items += [(by1, (by_x, by_y + AV // 2 - round(13 * k)), 1.05, 8.5 + E)]
+            cap = fBy.getbbox('H'); items += [(by1, (by_x, by_y + AV // 2 - (cap[1] + cap[3]) // 2), 1.05, 8.5 + E)]
         for im, (px, py), st, so in items:
             q = eoc(clamp((t - st) / 0.6)); qo = clamp((t - so) / 0.3)
             if q > 0 and qo < 1:

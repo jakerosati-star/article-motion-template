@@ -15,7 +15,7 @@ Set `"type"` in the article's settings. Anything set explicitly still wins over 
 
 | Type | Use for | What it sets |
 |---|---|---|
-| `article` (default) | Promoting a published article | Tag **THE BULWARK**, headline, author name(s) with headshot(s). **No subhead or date**: keep them in the settings for reference, they just don't show (turn back on per article with `"show_subhead": true` / `"show_date": true`). Text animates in and out with the loop |
+| `article` (default) | Promoting a published article | Tag **THE BULWARK**, headline, author name(s) with headshot(s). **No subhead or date**, and a bigger name and photo (1.45x, `"byline_scale"` to adjust): keep the subhead and date in the settings for reference, they just don't show (turn back on per article with `"show_subhead": true` / `"show_date": true`). Text animates in and out with the loop |
 | `appeal` | **Appeals**: Bulwark+ promos, sales and fundraising asks for paid media | Tag **JOIN THE BULWARK**, no byline, text stays on screen to the end of the loop, neon-yellow highlight color |
 
 **Appeal copy conventions** (from the "Our Moment" appeal, `articles/our-moment/`):
