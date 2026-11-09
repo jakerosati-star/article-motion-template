@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "We Convened a Group of Committed GOP Voters to See How They’re Coping",
+  "subhead": "After a historic defeat, loyal Republicans are finding fault everywhere but the top.",
+  "authors": [{"name": "SARAH LONGWELL"}],
+  "date": "NOVEMBER 8",
+  "accent": "#E4002B",
+  "output_prefix": "out/gop-coping",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
