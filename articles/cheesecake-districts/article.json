@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "Dems Put Up Saddam Numbers in Cheesecake Factory Districts",
+  "subhead": "Obama made a joke. Republicans made a fuss. Voters made it a rout.",
+  "authors": [{"name": "BRENDAN HARTNETT"}],
+  "date": "NOVEMBER 6",
+  "accent": "#E4002B",
+  "output_prefix": "out/cheesecake-districts",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}

@@ -261,6 +261,14 @@ def render(cfg, base, fmt, out_path, preview=False):
             hlines = balanced_wrap(cfg['headline'], fH, TW)
             gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
             block_h = measure()
+    # 9:16: if art + text won't fit inside the safe zone, shrink the headline until it does
+    if L.get('group'):
+        g0, g1 = L['group']
+        while ah + round(44 * k) + block_h > g1 - g0 and fH.spec[2] > L['head'] * 0.7:
+            fH = font(700, 75, fH.spec[2] - 2); lh = fH.spec[2]
+            hlines = balanced_wrap(cfg['headline'], fH, TW)
+            gap_tag = round(26 * k) - fH.getbbox('H')[1] + round(4 * k)
+            block_h = measure()
     top = L['text_top']
     if L.get('group'):   # centre art + text together inside a safe zone (vertical formats)
         g0, g1 = L['group']; gap = round(44 * k)
