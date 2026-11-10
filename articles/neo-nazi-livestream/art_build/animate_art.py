@@ -1,5 +1,4 @@
-"""Neo-Nazi Livestream art: "Oh, nooo!" keeps typing O's (Oh, noooooooo...) and backspaces before the loop point,
-livestream-style reaction emoji (skulls, X's, hiding eyes...) float up the screen, the error dialog pulses like an alert in the first second (and again
+"""Neo-Nazi Livestream art: livestream-style reaction emoji (skulls, X's, hiding eyes...) float up the screen, the error dialog pulses like an alert in the first second (and again
 mid-loop), the webcam's red recording light blinks with a glow, the screen flickers with a rolling scan band,
 the tissue flutters, slow push-in. Seamless 10s loop; frame 0 is the original. Writes ../art_loop.mp4"""
 import math, subprocess
@@ -49,7 +48,9 @@ G_O = glyph(1447, 852, 1497, 930)                   # third "o"
 G_BANG = glyph(1494, 832, 1515, 924)                # "!"
 O_STEP = (45.0, -6.25)                              # each o: 45px right, 6.25px up (the text's slant)
 O_XY = [(1361 - 1451, 874 - 861), (1406 - 1451, 868 - 861), (0, 0)]   # o1..o3 relative to the o3 glyph
+TYPE_OS = False   # the "Oh, noooo..." typing gag was tried and dropped; the text stays as drawn
 def n_os(t):
+    if not TYPE_OS: return 3
     n = 3 + int(max(0, min(14, (t - 0.35) / 0.11 + 1)))           # one more O every 0.11s, up to 17
     if t > 8.6: n = max(3, n - int((t - 8.6) / 0.05) - 1)          # quick backspace
     return n
