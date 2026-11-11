@@ -1,3 +1,2 @@
 __pycache__/
 *.pyc
-articles/*/art_build/*.npy

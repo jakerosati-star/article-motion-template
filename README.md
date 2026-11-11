@@ -179,17 +179,3 @@ Short headlines that fit on one line are enlarged, up to 1.5×. When the text bl
 ## Requirements
 
 `ffmpeg`, Python 3 with `pillow` and `numpy`. The art step also needs `opencv-python-headless` and `rembg[cpu]`.
-
-## Remotion version (`remotion/`)
-
-The same cards as a Remotion project, with the art animated live in React instead of pre-rendered to an MP4. The text layout comes straight from `render_card.py`, so both versions match:
-
-```bash
-python3 remotion/export_layout.py articles/<slug>/article.json   # writes remotion/public/<slug>/layout.json
-cd remotion && npm i && npx remotion studio                       # preview
-npx remotion render miller-daddy-1x1 out/miller-daddy_1x1.mp4     # render one format
-```
-
-- `src/Card.tsx`: the headline panel (tag, words rising, seam, byline, logo) with the template's timings and easing.
-- `src/<Article>Art.tsx`: the per-article art animation, from layers in `public/<slug>/`. The Miller Daddy layers come from `articles/miller-daddy/art_build/remotion_assets.py`.
-- `src/Root.tsx`: one composition per format (`<slug>-1x1`, `-4x5`, `-9x16`, `-16x9`), 300 frames at 30fps.
