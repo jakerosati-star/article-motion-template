@@ -1,5 +1,5 @@
 """Destroy All Monsters art: the dragon's fire plume licks and shimmers, Trump's tongue flicks (first one in the
-first second), the UFO hovers, old monster-movie film flicker + grain + the odd scratch, slow push-in.
+first second), the UFO zips around the top third, old monster-movie film flicker + grain + the odd scratch, slow push-in.
 Seamless 10s loop; frame 0 is the original. Writes ../art_loop.mp4"""
 import math, random, subprocess
 import numpy as np, cv2
@@ -21,8 +21,12 @@ UFO = [(1290, 22), (1340, 8), (1460, 8), (1540, 38), (1592, 92), (1603, 116), (1
        (1350, 112), (1298, 62)]
 tongue = poly(TONGUE, 0.8); ufo = poly(UFO, 0.8)
 TROOT = (1548.0, 506.0)
-hole_u = cv2.dilate((ufo > 0.05).astype(np.uint8), np.ones((9, 9), np.uint8))
-plate = cv2.inpaint(a.astype(np.uint8), hole_u, 9, cv2.INPAINT_TELEA).astype(np.float32)
+# the UFO leaves home for most of the loop: rebuild the sky behind it as soft haze + matching grain
+hole_u = cv2.dilate((ufo > 0.05).astype(np.uint8), np.ones((11, 11), np.uint8))
+_p = cv2.inpaint(a.astype(np.uint8), hole_u, 15, cv2.INPAINT_NS).astype(np.float32)
+_g = cv2.GaussianBlur(np.random.default_rng(2).normal(0, 1, (H, W)).astype(np.float32), (0, 0), 1.0)
+_g *= (a - cv2.GaussianBlur(a, (0, 0), 2))[hole_u == 0].std()
+plate = np.where(hole_u[..., None] > 0, cv2.GaussianBlur(_p, (0, 0), 8) + _g[..., None], a)
 # tongue flick = a local bend (no cut-out, so nothing behind it is ever revealed):
 # weight is 1 on the tongue and fades out ~30px around it; bend grows from 0 at the root to full at the tip
 tw = ndimage.gaussian_filter(cv2.dilate((tongue > 0.3).astype(np.uint8), np.ones((15, 15), np.uint8)).astype(np.float32), 9)
@@ -43,6 +47,19 @@ along = (xx - 1000) * U[0] + (yy - 320) * U[1]; across = (xx - 1000) * NRM[0] + 
 
 def ss(x): x = max(0.0, min(1.0, x)); return x * x * (3 - 2 * x)
 def wv(k, t, ph=0): return math.sin(TAU * k * t / P + ph)
+UC = (1445.0, 75.0)                       # UFO centre
+# (time, dx, dy) waypoints relative to home: repeated points are hovers, the gaps between them are darts
+UKEYS = [(0.0, 0, 0), (0.45, 0, 0), (0.85, -700, 120), (1.7, -700, 120), (2.05, -1150, 30), (2.9, -1150, 30),
+         (3.25, -300, 170), (4.1, -300, 170), (4.4, 200, 60), (5.2, 200, 60), (5.6, -900, 200), (6.5, -900, 200),
+         (6.85, -450, 10), (7.7, -450, 10), (8.15, 0, 0), (10.0, 0, 0)]
+def ufo_pos(tt):
+    for k in range(1, len(UKEYS)):
+        t0, x0, y0 = UKEYS[k - 1]; t1, x1, y1 = UKEYS[k]
+        if tt <= t1:
+            u = 0.0 if t1 == t0 else max(0.0, min(1.0, (tt - t0) / (t1 - t0)))
+            u = u * u * u * (u * (6 * u - 15) + 10)
+            return x0 + (x1 - x0) * u, y0 + (y1 - y0) * u
+    return 0.0, 0.0
 FLICKS = [0.25, 3.4, 6.6]                 # tongue flicks: a quick lick, two wiggles, back
 def tongue_angle(t):
     for t0 in FLICKS:
@@ -65,10 +82,21 @@ for i in range(N):
     dx = (d_al * U[0] + d_ac * NRM[0]) * fire_w; dy = (d_al * U[1] + d_ac * NRM[1]) * fire_w
     f = cv2.remap(plate, xx - dx, yy - dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
     f = f * (1 + 0.06 * (0.6 * wv(13, t) + 0.4 * wv(7, t, 1.1)) * fire_w)[..., None]
-    # UFO hover
-    ux, uy = 6 * wv(1, t, 0.5) - 6 * math.sin(0.5), 4 * wv(3, t)
-    w = cv2.warpAffine(UL, np.float32([[1, 0, ux], [0, 1, uy]]), (W, H), flags=cv2.INTER_LINEAR, borderValue=0); al = w[..., 3] / 255
-    f = f * (1 - al[..., None]) + w[..., :3] * al[..., None]
+    # UFO zips around the top third: quick darts between hovers, banking into each move, motion-blurred when fast
+    px, py = ufo_pos(t); qx, qy = ufo_pos(t - 1 / FPS)
+    vx, vy = px - qx, py - qy; speed = math.hypot(vx, vy)
+    bob = 4 * math.sin(TAU * 7 * t / P) * (1 - min(1, speed / 20))
+    bank = max(-14.0, min(14.0, -vx * 0.35))
+    sc = 1 + 0.12 * (py / 220.0)
+    n_sub = 1 if speed < 12 else 5
+    acc = np.zeros((H, W, 4), np.float32)
+    for s_ in range(n_sub):
+        ox, oy = px - vx * (s_ / n_sub) * 0.8, py - vy * (s_ / n_sub) * 0.8 + bob
+        M = cv2.getRotationMatrix2D(UC, bank, sc); M[0, 2] += ox; M[1, 2] += oy
+        acc += cv2.warpAffine(UL, M, (W, H), flags=cv2.INTER_LINEAR, borderValue=0)
+    w = acc / n_sub; al = w[..., 3] / 255
+    rgb = w[..., :3] / np.maximum(al[..., None], 1e-4)
+    f = f * (1 - al[..., None]) + rgb * al[..., None]
     # tongue flick: bend the tip up/down (applied to everything drawn so far, locally)
     ang = tongue_angle(t)
     if abs(ang) > 0.01:
@@ -84,6 +112,6 @@ for i in range(N):
     z = 1 + 0.035 * (0.5 - 0.5 * math.cos(TAU * t / P))
     Mc = np.float32([[z, 0, (1 - z) * W / 2], [0, z, (1 - z) * H / 2]])
     out = cv2.warpAffine(np.clip(f, 0, 255).astype(np.uint8), Mc, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
-    if i in (12, 15, 60, 150): Image.fromarray(out).save(f'_f{i:03d}.png')
+    if i in (20, 27, 50, 140, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
     enc.stdin.write(out.tobytes())
 enc.stdin.close(); enc.wait()
