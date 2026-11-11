@@ -190,7 +190,7 @@ def probe_duration(path):
     return float(out)
 
 
-def render(cfg, base, fmt, out_path, preview=False):
+def render(cfg, base, fmt, out_path, preview=False, export=None):
     L = LAYOUTS[fmt]
     CW, CH = L['size']
     ax, ay, aw, ah = L['art']
@@ -292,11 +292,12 @@ def render(cfg, base, fmt, out_path, preview=False):
 
     # clip box for the rise/sink animation must include descenders (g, j, p, q, y)
     band_h = fH.getbbox('Agjpqy')[3] + round(8 * k)
-    words = []
+    words = []; word_specs = []
     for li, ln in enumerate(hlines):
         x = X
         for w in ln.split(' '):
             words.append((text_img(w, fH, 'white', height=band_h), x, head_y + li * lh))
+            word_specs.append((w, x, head_y + li * lh))
             x += text_len(w + ' ', fH)
     NW = len(words)
     subs = [text_img(s, fSub, sub_col) for s in sublines]
@@ -356,6 +357,24 @@ def render(cfg, base, fmt, out_path, preview=False):
         cta.alpha_composite(ctxt, ((bw_ - ctxt.width) // 2 + round(2 * k), (bh_ - ctxt.height) // 2 + round(3 * k)))
         cta_c = (X + TW - bw_ / 2, by_y + AV / 2)
 
+    if export is not None:   # layout data for the Remotion version (remotion/export_layout.py); nothing is drawn
+        def css_top(f, y):   # PIL draws from the ascender; CSS (line-height = font size) centres ascender + descender in the line box
+            a_, d_ = f.getmetrics(); return y - (f.spec[2] - a_ - d_) / 2
+        cap = fBy.getbbox('H')
+        export.update(dict(
+            size=[CW, CH], art=[ax, ay, aw, ah], seam=L.get('seam', 'bottom'), seam_w=max(4, round(5 * k)),
+            accent=cfg.get('accent', '#E4002B'), k=k, X=X, TW=TW,
+            tag=dict(text=cfg.get('tag') or 'THE BULWARK', x=X, y=tag_y, w=tw, h=th, size=fTag.spec[2],
+                     tx=round(12 * k), ty=css_top(fTag, round(4 * k))),
+            head=dict(size=fH.spec[2], band_h=band_h, raise_=round(4 * k), lh=lh,
+                      words=[dict(text=w, x=x, y=y - round(4 * k), ty=css_top(fH, 0) + round(4 * k)) for (w, x, y) in
+                             [(w_, x_, y_) for (w_, x_, y_) in word_specs]]),
+            byline=dict(text=' AND '.join(a['name'] for a in authors), size=fBy.spec[2], x=by_x,
+                        y=css_top(fBy, by_y + AV // 2 - (cap[1] + cap[3]) // 2)) if show_by else None,
+            avatars=[dict(x=X + n * step, y=by_y, size=AV) for n in range(len(avs))],
+            logo=dict(kind=LOGOS[fmt]['kind'], x=logo_xy[0], y=logo_xy[1], w=logo.width, h=logo.height, opacity=LOGO_OPACITY) if logo is not None else None,
+        ))
+        return
     if preview:   # layout preview: one still frame, everything on screen, art = the unanimated still
         still = Image.open(os.path.join(base, cfg['art_still'])).convert('RGB').resize((aw, ah), Image.LANCZOS)
         P = 10.0; N = 1
