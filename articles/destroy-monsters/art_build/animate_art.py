@@ -19,10 +19,11 @@ TONGUE = [(1556, 486), (1520, 494), (1480, 499), (1450, 506), (1420, 511), (1395
           (1396, 549), (1426, 541), (1456, 529), (1490, 527), (1530, 524), (1558, 516)]
 UFO = [(1290, 22), (1340, 8), (1460, 8), (1540, 38), (1592, 92), (1603, 116), (1596, 132), (1500, 147), (1420, 142),
        (1350, 112), (1298, 62)]
-tongue = poly(TONGUE, 0.8); ufo = poly(UFO, 0.8)
+tongue = poly(TONGUE, 0.8)
+ufo = np.load('ufo_alpha.npy')   # AI cut-out (u2net) of the saucer, smoke trail removed, pod kept: see README in this folder
 TROOT = (1548.0, 506.0)
 # the UFO leaves home for most of the loop: rebuild the sky behind it as soft haze + matching grain
-hole_u = cv2.dilate((ufo > 0.05).astype(np.uint8), np.ones((11, 11), np.uint8))
+hole_u = cv2.dilate(((ufo > 0.05) | (poly(UFO) > 0.5)).astype(np.uint8), np.ones((11, 11), np.uint8))   # old outline too: the trail goes with it
 _p = cv2.inpaint(a.astype(np.uint8), hole_u, 15, cv2.INPAINT_NS).astype(np.float32)
 _g = cv2.GaussianBlur(np.random.default_rng(2).normal(0, 1, (H, W)).astype(np.float32), (0, 0), 1.0)
 _g *= (a - cv2.GaussianBlur(a, (0, 0), 2))[hole_u == 0].std()
@@ -33,6 +34,7 @@ tw = ndimage.gaussian_filter(cv2.dilate((tongue > 0.3).astype(np.uint8), np.ones
 tu = np.clip((1552 - xx) / (1552 - 1376), 0, 1) ** 1.6
 TBEND = (tw * tu).astype(np.float32)
 TL = np.dstack([a, tongue * 255]); UL = np.dstack([a, ufo * 255])
+ULP = np.dstack([a * ufo[..., None], ufo * 255]).astype(np.float32)   # premultiplied UFO layer
 
 # --- fire plume region: only bright flame pixels move (the dark falling tower stays put) ---
 plume = poly([(985, 330), (1060, 300), (1130, 380), (1220, 470), (1300, 600), (1335, 760), (1320, 885), (1180, 892),
@@ -93,10 +95,9 @@ for i in range(N):
     for s_ in range(n_sub):
         ox, oy = px - vx * (s_ / n_sub) * 0.8, py - vy * (s_ / n_sub) * 0.8 + bob
         M = cv2.getRotationMatrix2D(UC, bank, sc); M[0, 2] += ox; M[1, 2] += oy
-        acc += cv2.warpAffine(UL, M, (W, H), flags=cv2.INTER_LINEAR, borderValue=0)
+        acc += cv2.warpAffine(ULP, M, (W, H), flags=cv2.INTER_LINEAR, borderValue=0)
     w = acc / n_sub; al = w[..., 3] / 255
-    rgb = w[..., :3] / np.maximum(al[..., None], 1e-4)
-    f = f * (1 - al[..., None]) + rgb * al[..., None]
+    f = f * (1 - al[..., None]) + w[..., :3]                     # premultiplied: soft edges and blur stay true to colour
     # tongue flick: bend the tip up/down (applied to everything drawn so far, locally)
     ang = tongue_angle(t)
     if abs(ang) > 0.01:
