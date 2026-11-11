@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "Destroy All Monsters",
+  "subhead": "This isn’t the time for negotiation. It’s the time for ruthless aggression.",
+  "authors": [{"name": "JONATHAN V. LAST"}],
+  "date": "NOVEMBER 11",
+  "accent": "#E4002B",
+  "output_prefix": "out/destroy-monsters",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
