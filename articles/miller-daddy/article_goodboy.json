@@ -1,0 +1,20 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop_goodboy.mp4",
+  "headline": "Stephen Miller Is Still Trump’s Daddy on Immigration",
+  "subhead": "The president talks of Dreamers while his chief of staff dreams of deportations.",
+  "authors": [
+    {
+      "name": "ADRIAN CARRASQUILLO"
+    }
+  ],
+  "date": "NOVEMBER 11",
+  "accent": "#E4002B",
+  "output_prefix": "out/miller-daddy-goodboy",
+  "formats": [
+    "1x1",
+    "4x5",
+    "9x16",
+    "16x9"
+  ]
+}
