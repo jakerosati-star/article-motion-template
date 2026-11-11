@@ -1,5 +1,5 @@
-"""Medicare Fight art: the two speakers lean in toward each other in the first second (squaring off), ease apart,
-square off again mid-loop; the pointing arm jabs, the yellow circle pulses, slow push-in. Concrete + circle rebuilt
+"""Medicare Fight art: slow eases only. The two speakers drift gently toward each other and back once per loop
+(no tilting), at different depths for parallax; slow push-in. Concrete + circle rebuilt
 behind them. Seamless 10s loop; frame 0 is the original. Run layers.py first. Writes ../art_loop.mp4"""
 import math, subprocess
 import numpy as np, cv2
@@ -38,19 +38,20 @@ enc = subprocess.Popen(['ffmpeg', '-y', '-loglevel', 'error', '-f', 'rawvideo', 
 for i in range(N):
     t = i / FPS
     if i == 0: enc.stdin.write(a.astype(np.uint8).tobytes()); continue
-    k = face_off(t); j = jab(t)
+    e1 = 0.5 - 0.5 * math.cos(TAU * t / P)              # one slow ease out and back per loop
+    e2 = 0.5 - 0.5 * math.cos(TAU * t / P + 0.0)
     f = bg.copy()
-    pul = 0.5 - 0.5 * math.cos(TAU * 4 * t / P)                      # circle pulse: brightens and glows
-    f = f * (1 + 0.10 * pul * circ)[..., None]
-    # right speaker leans in toward the podium (pivot at his feet), behind the podium group
-    Mr = cv2.getRotationMatrix2D((1300.0, 940.0), 4.0 * k, 1.0 + 0.03 * k); Mr[0, 2] -= 45 * k
-    f = put(f, RIGHT, Mr)
-    # podium group leans toward him; the pointing arm adds a jab (whole group: the arm is part of the same cut-out)
-    Ml = cv2.getRotationMatrix2D((700.0, 1000.0), -2.5 * k - 1.2 * j, 1.0 + 0.02 * k); Ml[0, 2] += 30 * k; Ml[1, 2] -= 6 * j
-    f = put(f, LEFT, Ml)
+    # right speaker: slow ease toward centre and slightly larger (parallax: he sits behind the podium)
+    sR = 1 + 0.025 * e1
+    MR = np.float32([[sR, 0, (1 - sR) * 1300 - 22 * e1], [0, sR, (1 - sR) * 940]])
+    f = put(f, RIGHT, MR)
+    # podium group: slower, smaller ease the other way (front layer)
+    sL = 1 + 0.035 * e2
+    ML = np.float32([[sL, 0, (1 - sL) * 700 + 14 * e2], [0, sL, (1 - sL) * 1000]])
+    f = put(f, LEFT, ML)
     z = 1 + 0.03 * (0.5 - 0.5 * math.cos(TAU * t / P))
     Mc = np.float32([[z, 0, (1 - z) * W / 2], [0, z, (1 - z) * H / 2]])
     out = cv2.warpAffine(np.clip(f, 0, 255).astype(np.uint8), Mc, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
-    if i in (21, 45, 120, 170, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
+    if i in (1, 150, 299): Image.fromarray(out).save(f'_f{i:03d}.png')
     enc.stdin.write(out.tobytes())
 enc.stdin.close(); enc.wait()
