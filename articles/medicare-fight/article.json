@@ -1,0 +1,11 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "Please, Democrats: Don’t Have This Fight Again",
+  "subhead": "Single-payer supporters and skeptics agree on plenty. Start there.",
+  "authors": [{"name": "JONATHAN COHN"}],
+  "date": "NOVEMBER 11",
+  "accent": "#E4002B",
+  "output_prefix": "out/medicare-fight",
+  "formats": ["1x1", "4x5", "9x16", "16x9"]
+}
