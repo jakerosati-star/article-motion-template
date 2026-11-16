@@ -1,7 +1,8 @@
 """Spies Like Trump art: the eye blinks. One blink at 0.5s, a double blink mid-loop.
 The eyelids are built here (dark skin with grain, a lit rim, a lash line and lashes) and slide in from above and
 below the frame; the upper lid does most of the travel. Each frame is averaged over sub-frames for motion blur.
-Frame 0 = the art (eye open). Run from art_build/. Writes ../art_loop.mp4"""
+The light reflected in the eye pulses (a soft halo, 2.5s rhythm), and the camera pushes in toward the pupil and
+back out. Frame 0 = the art (eye open). Run from art_build/. Writes ../art_loop.mp4"""
 import math, subprocess
 import numpy as np, cv2
 from PIL import Image
@@ -76,11 +77,27 @@ def closed(t):
         if 0.13 <= s_ < 0.36: x = (s_ - 0.13) / 0.23; return (1 - x) ** 3   # slower open, easing out
     return 0.0
 
+# pulsing reflection: halo around the white oval of the reflected light, dark on frame 0
+GX, GY = 1340.0, 525.0
+yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+r2 = ((xx - GX) / 1.0) ** 2 + ((yy - GY) / 1.35) ** 2                  # the reflection is a tall oval
+HALO = 0.75 * np.exp(-r2 / (2 * 85 ** 2)) + 0.25 * np.exp(-r2 / (2 * 200 ** 2))
+PULSE = 2.5
+CX, CY = 1000.0, 560.0                                                  # push toward the pupil
+def base(t):
+    p = math.sin(math.pi * t / PULSE) ** 2                              # 0 at t=0, 4 pulses per loop
+    g = (HALO * (0.15 + 0.85 * p) * p)[..., None]
+    f = 255 - (255 - art) * (1 - g)                                     # screen: adds light
+    e = 0.5 - 0.5 * math.cos(2 * math.pi * t / P)
+    z = 1 + 0.05 * e
+    M = np.float32([[z, 0, (1 - z) * CX], [0, z, (1 - z) * CY]])
+    return cv2.warpAffine(f, M, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+
 def frame(t):
     c = closed(t)
-    if c <= 0: return art
+    if c <= 0: return base(t)
     up_base = UP_OPEN + (UP_SHUT - UP_OPEN) * c; lo_base = LO_OPEN + (LO_SHUT - LO_OPEN) * c
-    f = art.copy()
+    f = base(t)
     lo, lsh = place(LO, LO_SH, LH - lo_base)
     up, ush = place(UP, UP_SH, LH - up_base)
     f = f * (1 - np.maximum(ush, lsh)[..., None])
@@ -101,6 +118,6 @@ if __name__ == '__main__':
         if any(0 <= t - b < 0.4 for b in BLINKS):
             f = sum(frame(t + k / (FPS * SUB)) for k in range(SUB)) / SUB   # motion blur over the frame's shutter
         else:
-            f = art
+            f = base(t)
         enc.stdin.write(np.clip(f, 0, 255).astype(np.uint8).tobytes())
     enc.stdin.close(); enc.wait()
