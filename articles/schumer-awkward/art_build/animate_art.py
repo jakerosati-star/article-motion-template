@@ -11,6 +11,18 @@ art = np.array(Image.open('still_1920.png').convert('RGB')).astype(np.float32)
 yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
 cards = np.load('cards.npz')
 SCH = cards['schumer'].astype(np.float32); VH = cards['vh'].astype(np.float32)
+PED = cards['ped'].astype(np.float32)                    # a sliver of Capitol in the gap: static, drawn on top
+# behind it, the panel's pale sky continues straight down (so the panel can slide past it)
+_ped = PED > 0.02
+_top = np.argmax(_ped, axis=0)
+# the whole building in that gap (the sliver and the columns below it) stays static, in front
+PED_ALL = PED.copy()
+for _x in np.where(_ped.any(0))[0]:
+    PED_ALL[_top[_x]:, _x] = np.maximum(PED_ALL[_top[_x]:, _x], 1.0)
+PED_ALL[:, 1346:] = PED[:, 1346:]
+SKYFILL = art.copy()
+for _x in np.where(_ped.any(0))[0]:
+    y0 = max(_top[_x] - 3, 0); SKYFILL[y0:, _x] = art[y0 - 4:y0, _x].mean(0)
 
 # --- background without the cards (inpainted at half size, used only where a card was)
 hole = cv2.dilate(((SCH + VH) > 0.02).astype(np.uint8), np.ones((7, 7), np.uint8)) * 255
@@ -43,10 +55,15 @@ sky = cv2.morphologyEx(sky, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
 n, lab, st, _ = cv2.connectedComponentsWithStats(1 - sky[PY0:PY1, PX0:PX1], 4)
 for i in range(1, n):
     if st[i, 4] < 3000: sky[PY0:PY1, PX0:PX1][lab == i] = 1
+sky[PED > 0.02] = 0                                     # the Capitol sliver is not sky
 skyf = cv2.GaussianBlur(sky.astype(np.float32), (0, 0), 0.8) * sky.astype(np.float32)
-crop = art[PY0:PY1, PX0:PX1].astype(np.uint8)
-shole = cv2.dilate((1 - sky[PY0:PY1, PX0:PX1]).astype(np.uint8), np.ones((9, 9), np.uint8)) * 255
-sky_src = cv2.inpaint(crop, shole, 9, cv2.INPAINT_TELEA).astype(np.float32)
+# cloud texture: the panel's sky, with clouds continued behind Van Hollen and the Capitol sliver, and extended
+# PAD px past the panel's left edge (the drift pulls in texture from there); built by inpainting from the sky only
+PAD = 70
+crop = art[PY0:PY1, PX0 - PAD:PX1].astype(np.uint8)
+known = np.zeros(crop.shape[:2], np.uint8); known[:, PAD:] = sky[PY0:PY1, PX0:PX1]
+known = cv2.erode(known, np.ones((9, 9), np.uint8))
+sky_src = cv2.inpaint(crop, (1 - known) * 255, 9, cv2.INPAINT_TELEA).astype(np.float32)
 cy_, cx_ = np.mgrid[0:PY1 - PY0, 0:PX1 - PX0].astype(np.float32)
 DRIFT = 40.0
 
@@ -75,7 +92,7 @@ def shift(img, dx, dy):
 def frame(t):
     f = art.copy()
     dx = DRIFT * (0.5 - 0.5 * math.cos(TAU * t / P))
-    moved = cv2.remap(sky_src, cx_ - dx, cy_, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
+    moved = cv2.remap(sky_src, cx_ + PAD - dx, cy_, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
     a = skyf[PY0:PY1, PX0:PX1, None]
     f[PY0:PY1, PX0:PX1] = f[PY0:PY1, PX0:PX1] * (1 - a) + moved * a
     g = glint(t)
@@ -84,8 +101,12 @@ def frame(t):
     out = plate.copy()
     for m, (mx, my) in ((SCH, SCH_MOVE), (VH, VH_MOVE)):  # premultiplied layers: no fringes
         al = shift(m, mx * e, my * e)[..., None]
-        out = out * (1 - al) + shift(f * m[..., None], mx * e, my * e)
-    return out
+        src = np.where(_ped[..., None], SKYFILL, f) if m is VH else f
+        # colour premultiplied so that, at rest, layer over plate gives back the art exactly (soft edges included)
+        C = (src - plate * (1 - m[..., None])) * (m[..., None] > 0)
+        out = out * (1 - al) + shift(C, mx * e, my * e)
+    pa = PED_ALL[..., None]
+    return out * (1 - pa) + art * pa
 
 if __name__ == '__main__':
     import sys

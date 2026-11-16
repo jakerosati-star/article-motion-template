@@ -32,5 +32,17 @@ lower = (xx >= 1345) & (xx < 1814) & (yy >= 880) & (yy < 990)
 shoulder = (xx >= 1814) & (xx < 1860) & (yy >= 700) & (yy < 990) & (lum < 110)          # his suit past the panel edge
 shoulder = shoulder & ndimage.binary_dilation(lower | panel, iterations=60)
 v = panel | lower | ndimage.binary_opening(shoulder, iterations=2)
+v_full = v.copy()
+# a sliver of the Capitol (a pediment) shows in the gap between the photos, inside the panel's rectangle: it belongs
+# to the static background. Per column, find where the pale sky ends (searching down from y=750); below that is building.
+sky_rgb = np.array([195, 224, 234])
+for x in range(1300, 1350):
+    if x >= W: break
+    col = np.abs(a[750:900, x] - sky_rgb).sum(1)
+    hits = np.where(col > 60)[0]
+    if len(hits):
+        y0 = 750 + int(hits[0])
+        v[y0 - 1:, x] &= ~((x < 1346) & np.ones(H - y0 + 1, bool))
 f = lambda b: cv2.GaussianBlur(b.astype(np.float32), (0, 0), 0.7)
-np.savez('cards.npz', schumer=f(s).astype(np.float16), vh=f(v).astype(np.float16))
+ped = v_full & ~v                                     # the pediment sliver: drawn static, on top
+np.savez('cards.npz', schumer=f(s).astype(np.float16), vh=f(v_full).astype(np.float16), ped=f(ped).astype(np.float16))
