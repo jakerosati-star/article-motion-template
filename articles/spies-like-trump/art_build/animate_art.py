@@ -1,4 +1,4 @@
-"""Spies Like Trump art: the eye blinks. One blink at 0.5s, a double blink mid-loop.
+"""Spies Like Trump art: the eye blinks. A double blink right away (0.35s), another mid-loop.
 The eyelids are built here (dark skin with grain, a lit rim, a lash line and lashes) and slide in from above and
 below the frame; the upper lid does most of the travel. Each frame is averaged over sub-frames for motion blur.
 The light reflected in the eye pulses (a soft halo, 2.5s rhythm), and the camera pushes in toward the pupil and
@@ -68,7 +68,7 @@ def place(lid, sh, top):
 # lower from below the frame up to meet it. Shut, the upper edge (middle 760, corners ~640) overlaps the lower (540 / ~620).
 UP_OPEN, UP_SHUT = -560.0, 510.0
 LO_OPEN, LO_SHUT = H + 330.0, 700.0
-BLINKS = [0.5, 5.0, 5.42]                  # start times (s): a blink in the first second, a double blink mid-loop
+BLINKS = [0.35, 0.77, 5.0, 5.42]       # start times (s): a double blink right away, another mid-loop
 def closed(t):
     for t0 in BLINKS:
         s_ = t - t0
