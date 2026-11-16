@@ -1,0 +1,20 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "Spies Like Trump",
+  "subhead": "The president is a national security risk. Always has been.",
+  "authors": [
+    {
+      "name": "JONATHAN V. LAST"
+    }
+  ],
+  "date": "NOVEMBER 12",
+  "accent": "#E4002B",
+  "output_prefix": "out/spies-like-trump",
+  "formats": [
+    "1x1",
+    "4x5",
+    "9x16",
+    "16x9"
+  ]
+}
