@@ -69,6 +69,29 @@ Timing convention (10s loop):
 - 8.4–9.9s: elements exit.
 - 10s: the scene is back to the frame-0 state.
 
+### Cut-outs (separating people or objects from the art)
+
+`cutout.py` makes clean cut-outs for the art-loop scripts. **Reach for it first whenever a person has to move
+separately from the background** (scaling up, bobbing, stepping forward):
+
+```bash
+python3 cutout.py articles/<slug>/art_build/still_1920.png articles/<slug>/art_build/person.png
+python3 cutout.py <image> <out.png> --box 600,0,1300,1080      # one person out of several
+python3 cutout.py <image> <out.png> --model isnet-general-use  # animals, objects, cartoon cut-outs
+```
+
+It uses an AI person-detection model (rembg's `u2net_human_seg`), which gave the cleanest result of everything
+tried so far (Miller 2028: head, ears, raised hand, shoulders) with soft, natural edges. Things learned along
+the way:
+- Straight-edged objects (podiums, signs, frames) are cleaner traced as a polygon than detected.
+- Separating by colour (e.g. a colour subject on a black-and-white background) leaves rough edges and misses
+  darker parts; use it only as a fallback.
+- When a cut-out moves, what was behind it shows. Prefer moves that keep the hole covered (scale up from where the
+  subject stands; shrink the background toward the same point), and rebuild the hole from a wide margin so no
+  trace of the subject's outline is left in it.
+- Where moving anything would expose a face or detailed background that can't be rebuilt, don't cut it out:
+  animate on top of the art instead (overlays, light, re-tracing).
+
 ### 2. Render the cards
 
 Write an `article.json` next to your art loop and avatar (copy `example/article.json`):
