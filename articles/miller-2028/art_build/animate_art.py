@@ -1,7 +1,7 @@
 """Miller 2028 art: Miller (and his podium) steps forward from the scene: he scales up while everything behind him
 (Vance and Rubio crossed out, the briefing room) scales down and dims a touch, at 0.1s, easing in over ~3s; he holds, then both slowly
-ease back to the original framing by the loop point, so frame 0 = the art. The foreground is everything in colour
-(the background photo is black and white): Miller, podium, seal. Both scale about the bottom centre, so the
+ease back to the original framing by the loop point, so frame 0 = the art. The foreground is Miller (person matte) and
+the podium (traced outline). Both scale about the bottom centre, so the
 background only ever shrinks under the growing foreground and nothing behind Miller is exposed.
 Run from art_build/. Writes ../art_loop.mp4"""
 import math, subprocess
@@ -10,7 +10,19 @@ from PIL import Image
 
 W, H = 1920, 1080; P = 10.0; FPS = 30; N = int(P * FPS); TAU = 2 * math.pi
 art = np.array(Image.open('still_1920.png').convert('RGB')).astype(np.float32)
-FG = cv2.GaussianBlur(np.load('fg.npy').astype(np.float32), (0, 0), 0.9)
+# foreground: Miller from the person matte (soft edges kept), plus the podium as its traced outline (straight edges,
+# anti-aliased); the seal is part of the podium
+from rembg import remove, new_session
+_m = np.array(remove(Image.open('still_1920.png').convert('RGB'), session=new_session('u2net_human_seg'), only_mask=True)).astype(np.float32) / 255
+_x = np.arange(W)[None, :]
+_b = ((_m > 0.5) & (_x > 500) & (_x < 1450)).astype(np.uint8)
+_n, _l, _s, _ = cv2.connectedComponentsWithStats(_b, 8)
+_keep = cv2.dilate((_l == 1 + int(np.argmax(_s[1:, 4]))).astype(np.uint8), np.ones((5, 5), np.uint8)).astype(np.float32)
+MILLER = _m * _keep
+_S = 4; _pod = np.zeros((H * _S, W * _S), np.uint8)
+cv2.fillPoly(_pod, [np.int32([(p_[0] * _S, p_[1] * _S) for p_ in [(301, 946), (442, 887), (1580, 887), (1749, 950), (1749, 1085), (301, 1085)]])], 255, cv2.LINE_AA)
+POD = cv2.resize(_pod, (W, H), interpolation=cv2.INTER_AREA).astype(np.float32) / 255
+FG = np.maximum(MILLER, POD)
 # the background behind him, rebuilt in grey only (the background photo is black and white, so no navy or skin
 # colour can bleed in), from a generous margin so none of his outline is left in it
 hole = cv2.dilate((FG > 0.02).astype(np.uint8), np.ones((25, 25), np.uint8))
