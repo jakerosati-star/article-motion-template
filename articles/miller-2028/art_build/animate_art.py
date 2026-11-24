@@ -1,5 +1,5 @@
 """Miller 2028 art: Miller (and his podium) steps forward from the scene: he scales up while everything behind him
-(Vance and Rubio crossed out, the briefing room) scales down and dims a touch, at 0.1s, easing; he holds, then both
+(Vance and Rubio crossed out, the briefing room) scales down and dims a touch, at 0.1s, easing in over ~3s; he holds, then both slowly
 ease back to the original framing by the loop point, so frame 0 = the art. The foreground is everything in colour
 (the background photo is black and white): Miller, podium, seal. Both scale about the bottom centre, so the
 background only ever shrinks under the growing foreground and nothing behind Miller is exposed.
@@ -21,7 +21,7 @@ VIG = np.clip((np.sqrt(((_xx - W / 2) / (W / 2)) ** 2 + ((_yy - H * 0.6) / (H * 
 
 def ease(u): u = min(1, max(0, u)); return u * u * (3 - 2 * u)
 def amt(t):                                   # 0 = original framing, 1 = fully separated
-    return ease((t - 0.1) / 0.9) * (1 - ease((t - 8.4) / 1.4))
+    return ease((t - 0.1) / 3.2) * (1 - ease((t - 7.3) / 2.5))      # slow grow over ~3s, slow return
 
 def frame(t):
     a = amt(t)
