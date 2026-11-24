@@ -1,0 +1,20 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "John Fetterman’s Days Seem Numbered—and He Knows It",
+  "subhead": "The cantankerous Democrat is now irrelevant. His colleagues think that’s all the more reason to kick him out.",
+  "authors": [
+    {
+      "name": "JOE PERTICONE"
+    }
+  ],
+  "date": "NOVEMBER 19",
+  "accent": "#E4002B",
+  "output_prefix": "out/fetterman-numbered",
+  "formats": [
+    "1x1",
+    "4x5",
+    "9x16",
+    "16x9"
+  ]
+}
