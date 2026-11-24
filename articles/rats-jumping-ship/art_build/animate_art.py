@@ -1,91 +1,79 @@
-"""Two Biggest Rats art: the art holds still (Trump's glare, both rats untouched) while two dark silhouette hands
-slam down from the top of the frame and pin the rats by their tails: the left hand on Vance's tail at 0.3s, the
-right on Musk's at 0.55s, each with its shadow sharpening as it drops and a jolt of camera shake on impact. They
-press and tremble, lift and slam again at 5s, and lift clear out of frame before the loop point.
-Slow push-in throughout. Frame 0 = the art. Run from art_build/. Writes ../art_loop.mp4"""
+"""Two Biggest Rats art: Trump keeps an eye on them. His eyes dart from the Vance rat to the Musk rat and back,
+narrowing into a squint as he looks; the rats get nervous: heads flinch when he looks their way, ears flick,
+bodies breathe fast, tails twitch. Everything is a smooth local warp of the art (no cut-outs, nothing uncovered,
+so nothing can tear); slow push-in. Frame 0 = the art and every motion returns to rest by the loop point.
+Run from art_build/. Writes ../art_loop.mp4"""
 import math, subprocess
 import numpy as np, cv2
 from PIL import Image
 
 W, H = 1920, 1080; P = 10.0; FPS = 30; N = int(P * FPS); TAU = 2 * math.pi
 art = np.array(Image.open('still_1920.png').convert('RGB')).astype(np.float32)
+yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
 
-def hand_mask(mirror=False):
-    """Palm-down hand seen from above, fingertips pointing down; forearm runs off the top. 4x supersampled.
-    Returns (alpha HxW float, fingertip point (x, y) in the mask's own coords)."""
-    S = 4; w, h = 360, 1500
-    m = np.zeros((h * S, w * S), np.uint8)
-    cx = w / 2
-    def P(x, y): return (int(x * S), int(y * S))
-    # forearm and palm
-    cv2.fillPoly(m, [np.int32([P(cx - 72, 0), P(cx + 72, 0), P(cx + 92, 1020), P(cx - 92, 1020)])], 255, cv2.LINE_AA)
-    cv2.ellipse(m, P(cx, 1110), (int(108 * S), int(130 * S)), 0, 0, 360, 255, -1, cv2.LINE_AA)
-    # fingers (index..pinky): x offset, length, width
-    fingers = [(-66, 170, 40), (-22, 205, 42), (22, 195, 41), (64, 150, 36)]
-    for dx, ln, fw in fingers:
-        x0, y0 = cx + dx * 0.95, 1150; x1, y1 = cx + dx * 1.12, 1150 + ln
-        cv2.line(m, P(x0, y0), P(x1, y1), 255, int(fw * S), cv2.LINE_AA)
-        cv2.circle(m, P(x1, y1), int(fw * S / 2), 255, -1, cv2.LINE_AA)
-    # thumb, out to the side
-    cv2.line(m, P(cx - 95, 1060), P(cx - 160, 1190), 255, int(44 * S), cv2.LINE_AA)
-    cv2.circle(m, P(cx - 160, 1190), int(22 * S), 255, -1, cv2.LINE_AA)
-    a = cv2.resize(m, (w, h), interpolation=cv2.INTER_AREA).astype(np.float32) / 255
-    if mirror: a = a[:, ::-1]
-    tip = (cx, 1150 + 205)
-    return a, tip
+def bump(cx, cy, rx, ry, p=2):
+    r2 = ((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2
+    return np.clip(1 - r2, 0, 1) ** p
+EYES = [(705, 230, 135, 34), (1232, 216, 118, 40)]            # eye openings (centre, half-width, half-height)
+def plateau(cx, cy, rx, ry, inner=0.6):
+    r = np.sqrt(((xx - cx) / rx) ** 2 + ((yy - cy) / ry) ** 2)
+    u = np.clip((1 - r) / (1 - inner), 0, 1); return u * u * (3 - 2 * u)      # flat over the iris, easing to 0 at the corners
+EYE_W = [plateau(*e) for e in EYES]
+LID_W = [bump(cx, cy, rx * 1.15, ry * 2.4, 2) for cx, cy, rx, ry in EYES]
+HEADS = [(672, 805, 105, 95), (1262, 800, 105, 95)]          # rat heads (Vance, Musk)
+HEAD_W = [bump(*h) for h in HEADS]
+EARS = [[(612, 748), (764, 752)], [(1200, 732), (1342, 742)]]
+EAR_W = [[bump(x, y, 42, 46) for x, y in ee] for ee in EARS]
+BODY = [(672, 900, 190, 150), (1262, 895, 200, 150)]
+BODY_W = [bump(*b, p=1) for b in BODY]
+TAIL_L = ((xx < 530) & (xx > 230)).astype(np.float32) * bump(380, 945, 200, 42, 1) * np.clip((530 - xx) / 120, 0, 1)
+TAIL_R = ((xx > 1470) & (xx < 1880)).astype(np.float32) * bump(1680, 940, 260, 42, 1) * np.clip((xx - 1470) / 120, 0, 1)
+ledge = (yy < 992).astype(np.float32)                         # never warp the white ledge edge
 
-HANDS = []
-for (tx, ty, ang, mirror) in ((330, 955, 14, False), (1700, 948, -14, True)):   # where each hand's middle fingertip lands
-    a, tip = hand_mask(mirror)
-    HANDS.append(dict(a=a, tip=tip, target=(tx, ty), ang=ang))
-INK = np.array([16, 14, 20], np.float32)
+def ease(u): u = min(1, max(0, u)); return u * u * (3 - 2 * u)
+# eye target over time: -1 = looking at Vance (left), +1 = at Musk (right), 0 = ahead
+KEYS = [(0.0, 0), (0.2, 0), (0.32, -1), (1.05, -1), (1.17, 1), (2.0, 1), (2.15, 0), (4.9, 0), (5.02, 1), (5.7, 1),
+        (5.82, -1), (6.6, -1), (6.75, 1), (7.3, 1), (7.45, 0), (10.0, 0)]
+def look(t):
+    for (t0, v0), (t1, v1) in zip(KEYS, KEYS[1:]):
+        if t0 <= t <= t1: return v0 + (v1 - v0) * ease((t - t0) / max(t1 - t0, 1e-6))
+    return 0.0
+def squint(t):                                                # narrows while he's looking at one of them
+    return abs(look(t)) * 0.16
 
-def drop(k, t):
-    """0 = landed, larger = raised (px up), for hand k"""
-    t_in = [0.3, 0.55][k]
-    up = 1100.0
-    for s0, s1 in ((t_in, 4.6 + 0.2 * k), (5.0 + 0.25 * k, 8.7 + 0.15 * k)):
-        if t < s0 - 0.2: continue
-        if t < s0: u = (t - (s0 - 0.2)) / 0.2; return up * (1 - u * u)          # accelerating down
-        if t < s1: return -3.0 * math.sin(TAU * 9 * (t - s0)) * math.exp(-(t - s0) * 6) + 1.2 * math.sin(TAU * 3.3 * t)  # pressing, trembling
-        if t < s1 + 0.35: u = (t - s1) / 0.35; return up * (u * u)               # lifted away
-    return up
-
-def place(k, rise):
-    h = HANDS[k]; a = h['a']; tx, ty = h['target']
-    M = cv2.getRotationMatrix2D(h['tip'], h['ang'], 1.0)
-    M[0, 2] += tx - h['tip'][0]; M[1, 2] += ty - h['tip'][1] - rise
-    return cv2.warpAffine(a, M, (W, H), flags=cv2.INTER_LINEAR)
-
-def shake(t):
-    s = 0.0
-    for t0 in (0.3, 0.55, 5.0, 5.25):
-        u = t - t0
-        if 0 <= u < 0.3: s += 7 * math.exp(-u * 14) * math.sin(TAU * 22 * u)
-    return s
+def fields(t):
+    dx = np.zeros((H, W), np.float32); dy = np.zeros((H, W), np.float32)
+    lk = look(t); sq = squint(t)
+    for k, (cx, cy, rx, ry) in enumerate(EYES):
+        dx += lk * 17 * EYE_W[k]                              # iris slides toward the rat
+        dy += -abs(lk) * 5 * EYE_W[k]                         # and down a touch (the rats are below)
+        dy += sq * (yy - cy) * LID_W[k]                       # lids close in
+    for k in range(2):
+        towards = 1 if k == 0 else -1
+        attn = max(0.0, -lk) if k == 0 else max(0.0, lk)      # Trump is looking at this rat
+        # flinch: head pulls back/down and turns away when looked at; nervous jitter otherwise
+        jit = 3.0 * math.sin(TAU * (2.3 + 0.7 * k) * t) * math.sin(TAU * 0.5 * t) ** 2
+        dx += (towards * 9 * attn + jit) * HEAD_W[k]
+        dy += -7 * attn * HEAD_W[k]
+        # ears flick (quick, out of step)
+        for j, w in enumerate(EAR_W[k]):
+            f = math.sin(TAU * 0.5 * t + j * 1.7 + k) ** 24 * min(1, t / 0.4, (P - t) / 0.4)   # brief flicks
+            dy += 9 * f * w; dx += (-1 if j == 0 else 1) * 4 * f * w
+        # fast breathing
+        br = 0.012 * (math.sin(TAU * 3 * t) - 0) * min(1, t / 0.3) * min(1, (P - t) / 0.3)
+        bx, by = BODY[k][0], BODY[k][1]
+        dx += -(xx - bx) * br * BODY_W[k]; dy += -(yy - by) * br * BODY_W[k]
+    # tails twitch (travelling waves, zero at the loop point)
+    w1 = TAU * 2 / P * t
+    dy += 7 * (np.sin(xx / 45 - 3 * w1) - np.sin(xx / 45)) * TAIL_L
+    dy += 7 * (np.sin(xx / 55 + 3 * w1) - np.sin(xx / 55)) * TAIL_R
+    return dx * ledge, dy * ledge
 
 def frame(t):
-    f = art.copy()
-    for k in range(2):
-        rise = drop(k, t)
-        if rise > 1090: continue
-        al = place(k, rise)
-        # shadow on the scene: offset and soft while high, tight when landed
-        hgt = min(1.0, max(0.0, rise) / 400)
-        sh = place(k, 0) if rise < 1 else place(k, rise * 0.25)
-        sh = cv2.GaussianBlur(sh, (0, 0), 6 + 30 * hgt) * (0.55 - 0.3 * hgt)
-        sh = np.roll(np.roll(sh, int(14 + 40 * hgt), 0), int(10 + 30 * hgt), 1)
-        f = f * (1 - sh[..., None])
-        f = f * (1 - 0.94 * al[..., None]) + INK * 0.94 * al[..., None]
-        # a rim of light around the silhouette, so it reads against the dark suit
-        rim = np.clip(al - cv2.erode(al, np.ones((7, 7), np.uint8)), 0, 1)
-        rim = cv2.GaussianBlur(rim, (0, 0), 1.2)[..., None]
-        f = f * (1 - 0.75 * rim) + np.array([235, 215, 190], np.float32) * 0.75 * rim
-        glow = cv2.GaussianBlur(al, (0, 0), 14)[..., None] * (1 - al[..., None])
-        f = 255 - (255 - f) * (1 - 0.18 * glow)
-    sx = shake(t)
-    e = 0.5 - 0.5 * math.cos(TAU * t / P); z = 1 + 0.05 * e
-    Mz = np.float32([[z, 0, (1 - z) * W * 0.5 + sx], [0, z, (1 - z) * H * 0.35 + sx * 0.6]])
+    dx, dy = fields(t)
+    f = cv2.remap(art, xx - dx, yy - dy, cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
+    e = 0.5 - 0.5 * math.cos(TAU * t / P); z = 1 + 0.06 * e
+    Mz = np.float32([[z, 0, (1 - z) * W * 0.5], [0, z, (1 - z) * H * 0.3]])
     return cv2.warpAffine(f, Mz, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
 
 if __name__ == '__main__':
