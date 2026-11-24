@@ -1,0 +1,20 @@
+{
+  "art_still": "art_still.jpg",
+  "art_loop": "art_loop.mp4",
+  "headline": "Stephen Miller 2028?",
+  "subhead": "He’s the son Trump always wanted.",
+  "authors": [
+    {
+      "name": "JONATHAN V. LAST"
+    }
+  ],
+  "date": "NOVEMBER 24",
+  "accent": "#E4002B",
+  "output_prefix": "out/miller-2028",
+  "formats": [
+    "1x1",
+    "4x5",
+    "9x16",
+    "16x9"
+  ]
+}
