@@ -11,9 +11,14 @@ from PIL import Image
 W, H = 1920, 1080; P = 10.0; FPS = 30; N = int(P * FPS); TAU = 2 * math.pi
 art = np.array(Image.open('still_1920.png').convert('RGB')).astype(np.float32)
 FG = cv2.GaussianBlur(np.load('fg.npy').astype(np.float32), (0, 0), 0.9)
-hole = cv2.dilate((FG > 0.02).astype(np.uint8), np.ones((9, 9), np.uint8))
-bg = cv2.inpaint(art.astype(np.uint8), hole * 255, 9, cv2.INPAINT_TELEA).astype(np.float32)
-bg = np.where((hole > 0)[..., None], bg, art)
+# the background behind him, rebuilt in grey only (the background photo is black and white, so no navy or skin
+# colour can bleed in), from a generous margin so none of his outline is left in it
+hole = cv2.dilate((FG > 0.02).astype(np.uint8), np.ones((25, 25), np.uint8))
+gray = art.mean(2)
+src_g = np.where(hole > 0, 0, gray).astype(np.uint8)
+fill = cv2.inpaint(src_g, hole * 255, 15, cv2.INPAINT_TELEA).astype(np.float32)
+fill = cv2.GaussianBlur(fill, (0, 0), 3)
+bg = np.where((hole > 0)[..., None], np.repeat(fill[..., None], 3, 2), art)
 FGC = art * FG[..., None]
 ANCHOR = (960.0, 1080.0)
 _yy, _xx = np.mgrid[0:H, 0:W].astype(np.float32)
@@ -26,7 +31,7 @@ def amt(t):                                   # 0 = original framing, 1 = fully 
 def frame(t):
     a = amt(t)
     if a <= 0: return art.copy()
-    sb = 1 - 0.06 * a; sf = 1 + 0.13 * a
+    sb = 1 - 0.035 * a; sf = 1 + 0.07 * a
     Mb = np.float32([[sb, 0, (1 - sb) * ANCHOR[0]], [0, sb, (1 - sb) * ANCHOR[1]]])
     Mf = np.float32([[sf, 0, (1 - sf) * ANCHOR[0]], [0, sf, (1 - sf) * ANCHOR[1]]])
     b = cv2.warpAffine(bg, Mb, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
