@@ -1,7 +1,7 @@
-"""Trump / American Communism art: the hammer and sickle swells toward the camera and stamps back down with a red
-flash (0.15s, again at 5s); the flag behind ripples gently in a seamless wave; Trump (rembg) stays put on top, with a
-slow push-in. The emblem only ever scales up from its place, so nothing behind it is uncovered; the flag ripple uses
-a plate with the emblem and Trump inpainted out. Frame 0 = the art. Run from art_build/. Writes ../art_loop.mp4"""
+"""Trump / American Communism art: a slow push-in, and Trump's oversized head bobbles like a bobblehead: knocked at
+0.15s it wobbles side to side on the neck and settles (a damped spring), knocked again at 5s. The head (rembg matte,
+skin and hair above the collar) rotates about the neck; the slivers it uncovers are inpainted. Frame 0 = the art.
+Run from art_build/. Writes ../art_loop.mp4"""
 import math, subprocess
 import numpy as np, cv2
 from PIL import Image
@@ -9,55 +9,53 @@ from PIL import Image
 W, H = 1920, 1080; P = 10.0; FPS = 30; N = int(P * FPS); TAU = 2 * math.pi
 art = np.array(Image.open('still_1920.png').convert('RGB')).astype(np.float32)
 TR = np.load('rb.npy').astype(np.float32) / 255
-n_, l_, s_, _ = cv2.connectedComponentsWithStats((TR > 0.5).astype(np.uint8), 8)
-TR = TR * cv2.dilate((l_ == 1 + int(np.argmax(s_[1:, 4]))).astype(np.uint8), np.ones((5, 5), np.uint8))
-r, g, b = art[..., 0], art[..., 1], art[..., 2]
-hs = ((r > 150) & (g < 80) & (b < 80)).astype(np.uint8)
-hs = cv2.morphologyEx(hs, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
-n, lab, st, cen = cv2.connectedComponentsWithStats(hs, 8)
-k = 1 + int(np.argmax(st[1:, 4]))
-from scipy import ndimage
-HS = ndimage.binary_fill_holes(lab == k).astype(np.float32)
-HS = cv2.GaussianBlur(cv2.dilate(HS, np.ones((3, 3), np.uint8)), (0, 0), 1.0) * (1 - TR)
-ys, xs = np.where(HS > 0.5); HCX, HCY = float(xs.mean()), float(ys.mean())
-hole = cv2.dilate(((HS > 0.02) | (TR > 0.02)).astype(np.uint8), np.ones((11, 11), np.uint8))
-small = lambda x: cv2.resize(x, (W // 2, H // 2), interpolation=cv2.INTER_AREA)
-plate = cv2.resize(cv2.inpaint(small(art.astype(np.uint8)), (small(hole) > 0).astype(np.uint8) * 255, 7, cv2.INPAINT_TELEA), (W, H)).astype(np.float32)
-plate = np.where((hole > 0)[..., None], plate, art)
-HSC = art * HS[..., None]; TRC = art * TR[..., None]
 yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+lum = art.mean(2); r, g, b = art[..., 0], art[..., 1], art[..., 2]
+# head: Trump's skin and hair above the collar (the suit is dark, the collar white; the head is warm/bright)
+box = (yy > 250) & (yy < 518) & (xx > 900) & (xx < 1120)
+head = ((TR > 0.5) & box & (lum > 80) & ~((r > 220) & (g > 220) & (b > 220) & (yy > 470))).astype(np.uint8)
+head = cv2.morphologyEx(head, cv2.MORPH_CLOSE, np.ones((9, 9), np.uint8))
+n, lab, st, _ = cv2.connectedComponentsWithStats(head, 8)
+head = (lab == 1 + int(np.argmax(st[1:, 4]))).astype(np.uint8)
+from scipy import ndimage
+head = ndimage.binary_fill_holes(head).astype(np.float32)
+HEAD = cv2.GaussianBlur(head, (0, 0), 1.0) * TR
+ys, xs = np.where(HEAD > 0.5)
+PIV = (float(xs.mean()), float(ys.max()) - 6)                    # the neck, just above the collar
+hole = cv2.dilate((HEAD > 0.02).astype(np.uint8), np.ones((9, 9), np.uint8))
+plate = cv2.inpaint(art.astype(np.uint8), hole * 255, 9, cv2.INPAINT_TELEA).astype(np.float32)
+# below the chin the body continues: keep the art there (the head only uncovers background at its sides/top)
+plate = np.where((hole > 0)[..., None], plate, art)
+HC = art * HEAD[..., None]
 
-def stamp(t):
-    for t0 in (0.15, 5.0):
-        u = (t - t0) / 0.5
-        if 0 <= u < 1:
-            if u < 0.35: v = u / 0.35; return 1 + 0.14 * math.sin(math.pi / 2 * v), 0.0
-            v = (u - 0.35) / 0.65; return 1 + 0.14 * (1 - v) ** 3 * math.cos(2.5 * math.pi * v) ** 2, max(0.0, 1 - v * 2.5)
-    return 1.0, 0.0
+def angle(t):
+    a = 0.0
+    for t0, amp in ((0.15, 9.0), (5.0, 7.0)):
+        u = t - t0
+        if u >= 0: a += amp * math.exp(-u * 1.6) * math.sin(TAU * 1.9 * u)
+    return a * (1 - min(1, max(0, (t - 9.0) / 1.0)))              # fully settled by the loop point
 
-def flag(t):
-    ph = TAU * t / P
-    dy = 7 * (np.sin(xx / 210 - 2 * ph) - np.sin(xx / 210)) * np.clip(xx / 400, 0, 1)   # ripple, pinned at left, 0 at t=0
-    dx = 3 * (np.sin(yy / 160 - 2 * ph) - np.sin(yy / 160))
-    shade = 1 + 0.06 * ((np.cos(xx / 210 - 2 * ph) - np.cos(xx / 210)) * np.clip(xx / 400, 0, 1))[..., None]
-    return cv2.remap(art, xx + dx, yy + dy, cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT) * shade
-
-FG = np.clip(HS + TR, 0, 1)[..., None]
+# the rebuilt background gets the flag's speckle back: its fine detail, borrowed from the area just around the head
+ring = (cv2.dilate(hole, np.ones((61, 61), np.uint8)) > 0) & (hole == 0) & (TR < 0.1)
+hp = art - cv2.GaussianBlur(art, (0, 0), 3)
+ys_, xs_ = np.where(ring)
+idx = (yy.astype(np.int64) * 7919 + xx.astype(np.int64) * 104729) % len(ys_)
+tex = hp[ys_[idx], xs_[idx]]
+plate = np.where((hole > 0)[..., None], plate + tex * 0.8, plate)
+HARD = (HEAD > 0.5).astype(np.float32)
 def frame(t):
-    f = flag(t) * (1 - FG) + art * FG                                # the flag ripples; emblem and Trump untouched
-    s, flash = stamp(t)
-    if s > 1:
-        M = np.float32([[s, 0, (1 - s) * HCX], [0, s, (1 - s) * HCY]])
-        a = cv2.warpAffine(HS, M, (W, H))[..., None]; c = cv2.warpAffine(HSC, M, (W, H), flags=cv2.INTER_CUBIC)
-        sh = cv2.GaussianBlur(a[..., 0], (0, 0), 18)[..., None] * min(1, (s - 1) * 5) * 0.5
-        f = f * (1 - np.roll(np.roll(sh, 18, 0), 12, 1))
-        f = f * (1 - a) + c
-        if flash > 0: f = f + a * flash * np.array([70, 25, 25], np.float32)
-        f = f * (1 - TR[..., None]) + TRC
-    elif flash > 0:
-        f = f + HS[..., None] * flash * np.array([70, 25, 25], np.float32)
-    e = 0.5 - 0.5 * math.cos(TAU * t / P); z = 1 + 0.045 * e
-    Mz = np.float32([[z, 0, (1 - z) * W * 0.5], [0, z, (1 - z) * H * 0.5]])
+    a = angle(t)
+    if abs(a) < 0.05: f = art.copy()
+    else:
+        M = cv2.getRotationMatrix2D(PIV, a, 1.0)
+        f = np.where((hole > 0)[..., None], plate, art)
+        ha = cv2.warpAffine(HEAD, M, (W, H))[..., None]; hc = cv2.warpAffine(HC, M, (W, H), flags=cv2.INTER_CUBIC)
+        f = f * (1 - ha) + hc
+        # where the rotated head doesn't reach, below the chin, the body (collar, suit) is the art's own
+        keep = ((yy > PIV[1] - 2) & (HEAD < 0.5) & (TR > 0.5))[..., None]
+        f = np.where(keep, art, f)
+    e = 0.5 - 0.5 * math.cos(TAU * t / P); z = 1 + 0.06 * e
+    Mz = np.float32([[z, 0, (1 - z) * PIV[0]], [0, z, (1 - z) * PIV[1]]])
     return cv2.warpAffine(f, Mz, (W, H), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REFLECT)
 
 if __name__ == '__main__':
